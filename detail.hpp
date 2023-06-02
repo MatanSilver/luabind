@@ -8,18 +8,22 @@
 #include "lua.hpp"
 #include "traits.hpp"
 
+#include <concepts>
+
 namespace luawrapper::detail {
 
     template<typename T>
-    void toLua(lua_State *aState, const T &aVal) {
-        if constexpr (std::is_same_v<T, bool>) {
-            lua_pushboolean(aState, aVal);
-        } else if constexpr (std::is_arithmetic_v<T>) {
-            lua_pushnumber(aState, aVal);
-        } else if constexpr (std::is_same_v<T, std::string>) {
+    void toLua(lua_State *aState, T&& aVal) {
+        if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
+            lua_pushboolean(aState, std::forward<T>(aVal));
+        } else if constexpr (std::is_arithmetic_v<std::decay_t<T>>) {
+            lua_pushnumber(aState, std::forward<T>(aVal));
+        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
             lua_pushlstring(aState, aVal.c_str(), aVal.length());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, char *>) {
-            lua_pushstring(aState, aVal);
+        } else if constexpr (std::is_same_v<std::decay_t<T>, char *> || std::is_same_v<std::decay_t<T>, const char *>) {
+            lua_pushstring(aState, std::forward<T>(aVal));
+        } else if constexpr (std::is_invocable_v<std::decay_t<T>, lua_State*>) {
+            lua_pushcfunction(aState, std::forward<T>(aVal));
         } else {
             static_assert(detail::traits::always_false_v<T>, "Unsupported type");
         }
