@@ -25,11 +25,6 @@ namespace luawrapper {
             return *this;
         }
 
-        template <typename Callable>
-        void expose(const std::string& aFunctionName, Callable aFunction) {
-            lua_register(fState, aFunctionName.c_str(), aFunction);
-        }
-
         struct GetGlobalHelper {
             GetGlobalHelper(const std::string& aFunctionToCall, Lua& aLua)
                     : fGlobalName(aFunctionToCall)
@@ -49,6 +44,7 @@ namespace luawrapper {
             Lua& operator=(T&& aVal) {
                 detail::toLua(fLua.fState, std::forward<T>(aVal));
                 lua_setglobal(fLua.fState, fGlobalName.c_str());
+                return fLua;
             }
 
         private:

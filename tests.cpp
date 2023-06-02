@@ -70,8 +70,7 @@ TEST(LuaWrapper, Expose) {
         return x*2;
     };
     luawrapper::Lua lua;
-    auto func = luawrapper::detail::adapt<0>(timesTwo);
-    lua.expose("timesTwo", func);
+    lua["timesTwo"] = luawrapper::detail::adapt<0>(timesTwo);
     lua <<R"(
             callIntoCFunc = function(a)
                 return timesTwo(a)
@@ -87,8 +86,7 @@ TEST(LuaWrapper, IncorrectArgumentType) {
         return x*2;
     };
     luawrapper::Lua lua;
-    auto func = luawrapper::detail::adapt<1>(timesTwo);
-    lua.expose("timesTwo", func);
+    lua["timesTwo"] = luawrapper::detail::adapt<1>(timesTwo);
     auto willThrow = [&](){ int x = lua["timesTwo"](std::string("thing")); };
     ASSERT_THROW(willThrow(), luawrapper::detail::IncorrectType);
 }
