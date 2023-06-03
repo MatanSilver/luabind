@@ -56,6 +56,16 @@ namespace luawrapper::detail::traits {
 
     template <typename T>
     constexpr bool is_vector_v = is_vector<T>::value;
+
+
+    template <typename>
+    struct is_tuple : std::false_type{};
+
+    template <typename ...Args>
+    struct is_tuple<std::tuple<Args...>> : std::true_type{};
+
+    template <typename T>
+    constexpr bool is_tuple_v = is_tuple<T>::value;
 }
 
 #endif //LUAWRAPPER_TRAITS_HPP

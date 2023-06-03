@@ -9,6 +9,7 @@
 #include "traits.hpp"
 
 #include <concepts>
+#include <string>
 
 namespace luawrapper::detail {
     typedef int (*FuncPtr)(lua_State *);
@@ -16,7 +17,47 @@ namespace luawrapper::detail {
     template<typename Callable, typename UniqueType = decltype([](){})>
     FuncPtr adapt(const Callable &aFunc);
 
+    template <typename T>
+    void toLua(lua_State *aState, T&& aVal);
+
     template<typename T>
+    T fromLua(lua_State *aState);
+
+    template <typename T>
+    void setTableElement(lua_State *aState, const T& aVal, int i) {
+        toLua(aState, aVal);
+        lua_seti(aState, -2, i);
+    }
+
+    template <typename T>
+    T getTableElement(lua_State *aState, int i) {
+        lua_geti(aState, -1, i);
+        return fromLua<T>(aState);
+    }
+
+    template <typename ...Args, std::size_t... I>
+    void toLuaTupleHelper(lua_State *aState, const std::tuple<Args...>& aVal, std::index_sequence<I...>) {
+        (setTableElement(aState, std::get<I>(aVal), I+1), ...);
+    }
+
+    template <typename T>
+    void toLuaTuple(lua_State *aState, const T& aVal) {
+        lua_createtable(aState, std::tuple_size_v<std::decay_t<T>>, 0);
+        toLuaTupleHelper(aState, aVal, std::make_index_sequence<std::tuple_size_v<std::decay_t<T>>>());
+    }
+
+    template <typename T, std::size_t... I>
+    T fromLuaTupleHelper(lua_State *aState, std::index_sequence<I...>) {
+        return {getTableElement<std::tuple_element_t<I,T>>(aState, I+1) ...};
+    }
+
+    template <typename T>
+    T fromLuaTuple(lua_State *aState) {
+        constexpr std::size_t tuple_size = std::tuple_size_v<T>;
+        return fromLuaTupleHelper<T>(aState, std::make_index_sequence<tuple_size>());
+    }
+
+    template <typename T>
     void toLua(lua_State *aState, T&& aVal) {
         if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
             lua_pushboolean(aState, std::forward<T>(aVal));
@@ -29,9 +70,10 @@ namespace luawrapper::detail {
         } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
             lua_createtable(aState, aVal.size(), 0);
             for (int i = 0; i < aVal.size(); ++i) {
-                toLua(aState, aVal[i]);
-                lua_seti(aState, -2, i+1);
+                setTableElement(aState, aVal[i], i+1);
             }
+        } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
+            toLuaTuple(aState, std::forward<T>(aVal));
         } else {
             // TODO: somehow check if T is a callable, and static assert for other unsupported types
             lua_pushcfunction(aState, detail::adapt(std::forward<T>(aVal)));
@@ -45,21 +87,21 @@ namespace luawrapper::detail {
     template<typename T>
     T fromLua(lua_State *aState) {
         T ret;
-        if constexpr (std::is_same_v<T, bool>) {
+        if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
             if (!lua_isboolean(aState, -1)) {
                 throw IncorrectType();
             }
             ret = lua_toboolean(aState, -1);
             lua_pop(aState, 1);
             return ret;
-        } else if constexpr (std::is_arithmetic_v<T>) {
+        } else if constexpr (std::is_arithmetic_v<std::decay_t<T>>) {
             if (!lua_isnumber(aState, -1)) {
                 throw IncorrectType();
             }
             ret = lua_tonumber(aState, -1);
             lua_pop(aState, 1);
             return ret;
-        } else if constexpr (std::is_same_v<T, std::string>) {
+        } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
             if (!lua_isstring(aState, -1) || lua_isnumber(aState, -1)) {
                 // lua_isstring returns true for numbers, oddly
                 throw IncorrectType();
@@ -74,10 +116,11 @@ namespace luawrapper::detail {
             }
             T retVec;
             for (int i = 0; i < lua_rawlen(aState, -1); ++i) {
-                lua_geti(aState, -1, i+1);
-                retVec.emplace_back(fromLua<typename T::value_type>(aState));
+                retVec.emplace_back(getTableElement<typename T::value_type>(aState, i+1));
             }
             return retVec;
+        } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
+            return fromLuaTuple<std::decay_t<T>>(aState);
         } else {
             static_assert(detail::traits::always_false_v<T>, "Unsupported type");
         }

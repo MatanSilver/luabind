@@ -189,6 +189,19 @@ TEST(LuaWrapper, StringVector) {
     ASSERT_EQ(initialVec, reconstructedVec);
 }
 
+TEST(LuaWrapper, Tuple) {
+    luawrapper::Lua lua;
+    // We can even have tuples containing tuples!
+    using T = std::tuple<std::string,
+                         int,
+                         bool,
+                         std::tuple<int, bool>>;
+    T initialTuple{"thing", 1, true, {4, false}};
+    lua["newtuple"] = initialTuple;
+    T reconstructedTuple = lua["newtuple"];
+    ASSERT_EQ(initialTuple, reconstructedTuple);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
