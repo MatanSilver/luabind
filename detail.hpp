@@ -26,6 +26,12 @@ namespace luawrapper::detail {
             lua_pushlstring(aState, aVal.c_str(), aVal.length());
         } else if constexpr (std::is_same_v<std::decay_t<T>, char *> || std::is_same_v<std::decay_t<T>, const char *>) {
             lua_pushstring(aState, std::forward<T>(aVal));
+        } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
+            lua_createtable(aState, aVal.size(), 0);
+            for (int i = 0; i < aVal.size(); ++i) {
+                toLua(aState, aVal[i]);
+                lua_seti(aState, -2, i+1);
+            }
         } else {
             // TODO: somehow check if T is a callable, and static assert for other unsupported types
             lua_pushcfunction(aState, detail::adapt(std::forward<T>(aVal)));
@@ -62,6 +68,16 @@ namespace luawrapper::detail {
             lua_pop(aState, 1);
             return ret;
             // We don't support const char* for memory safety reasons
+        } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
+            if (!lua_istable(aState, -1)) {
+                throw IncorrectType();
+            }
+            T retVec;
+            for (int i = 0; i < lua_rawlen(aState, -1); ++i) {
+                lua_geti(aState, -1, i+1);
+                retVec.emplace_back(fromLua<typename T::value_type>(aState));
+            }
+            return retVec;
         } else {
             static_assert(detail::traits::always_false_v<T>, "Unsupported type");
         }

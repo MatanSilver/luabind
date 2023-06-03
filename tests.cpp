@@ -173,6 +173,22 @@ TEST(LuaWrapper, ChainedScriptsAndCFuncs) {
     ASSERT_EQ((int)lua["sumXY"](), 3);
 }
 
+TEST(LuaWrapper, IntVector) {
+    luawrapper::Lua lua;
+    std::vector initialVec{1, 3, 4, 5};
+    lua["newvec"] = initialVec;
+    std::vector<int> reconstructedVec = lua["newvec"];
+    ASSERT_EQ(initialVec, reconstructedVec);
+}
+
+TEST(LuaWrapper, StringVector) {
+    luawrapper::Lua lua;
+    std::vector<std::string> initialVec{"thing", "stuff"};
+    lua["newvec"] = initialVec;
+    std::vector<std::string> reconstructedVec = lua["newvec"];
+    ASSERT_EQ(initialVec, reconstructedVec);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

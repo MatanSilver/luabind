@@ -47,6 +47,15 @@ namespace luawrapper::detail::traits {
     const char* type_to_string() {
         return __PRETTY_FUNCTION__;
     }
+
+    template <typename>
+    struct is_vector : std::false_type{};
+
+    template <typename T>
+    struct is_vector<std::vector<T>> : std::true_type{};
+
+    template <typename T>
+    constexpr bool is_vector_v = is_vector<T>::value;
 }
 
 #endif //LUAWRAPPER_TRAITS_HPP
