@@ -11,6 +11,10 @@
 #include <concepts>
 
 namespace luawrapper::detail {
+    typedef int (*FuncPtr)(lua_State *);
+
+    template<typename Callable, typename UniqueType = decltype([](){})>
+    FuncPtr adapt(const Callable &aFunc);
 
     template<typename T>
     void toLua(lua_State *aState, T&& aVal) {
@@ -22,10 +26,9 @@ namespace luawrapper::detail {
             lua_pushlstring(aState, aVal.c_str(), aVal.length());
         } else if constexpr (std::is_same_v<std::decay_t<T>, char *> || std::is_same_v<std::decay_t<T>, const char *>) {
             lua_pushstring(aState, std::forward<T>(aVal));
-        } else if constexpr (std::is_invocable_v<std::decay_t<T>, lua_State*>) {
-            lua_pushcfunction(aState, std::forward<T>(aVal));
         } else {
-            static_assert(detail::traits::always_false_v<T>, "Unsupported type");
+            // TODO: somehow check if T is a callable, and static assert for other unsupported types
+            lua_pushcfunction(aState, detail::adapt(std::forward<T>(aVal)));
         }
     }
 
@@ -64,9 +67,7 @@ namespace luawrapper::detail {
         }
     }
 
-    typedef int (*FuncPtr)(lua_State *);
-
-    template<typename Callable, std::size_t> std::optional<Callable> gCallable;
+    template<typename Callable, typename> std::optional<Callable> gCallable;
 
     template <typename>
     struct get_args_as_tuple{};
@@ -79,26 +80,26 @@ namespace luawrapper::detail {
     };
 
 
-    template<typename Callable, std::size_t id>
+    template<typename Callable, typename UniqueType>
     int adapted(lua_State *aState) {
         using retType = typename detail::traits::function_traits<Callable>::return_type;
         using argTypes = typename detail::traits::function_traits<Callable>::argument_types;
 
         auto args = get_args_as_tuple<argTypes>::apply(aState);
         if constexpr (std::is_same_v<retType, void>) {
-            std::apply(*gCallable<Callable, id>, args);
+            std::apply(*gCallable<Callable, UniqueType>, args);
             return 0;
         } else {
-            retType ret = std::apply(*gCallable<Callable, id>, args);
+            retType ret = std::apply(*gCallable<Callable, UniqueType>, args);
             toLua(aState, ret);
             return 1;
         }
     }
 
-    template<std::size_t id, typename Callable>
+    template<typename Callable, typename UniqueType>
     FuncPtr adapt(const Callable &aFunc) {
-        gCallable<Callable, id>.emplace(aFunc);
-        return &adapted<Callable, id>;
+        gCallable<Callable, UniqueType>.emplace(aFunc);
+        return &adapted<Callable, UniqueType>;
     }
 
     class RetHelper {

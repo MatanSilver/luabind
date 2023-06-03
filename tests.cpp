@@ -66,11 +66,10 @@ int thing(int, int) {
 }
 
 TEST(LuaWrapper, Expose) {
-    auto timesTwo = [](int x)->int {
-        return x*2;
-    };
     luawrapper::Lua lua;
-    lua["timesTwo"] = luawrapper::detail::adapt<0>(timesTwo);
+    lua["timesTwo"] = [](int x)->int {
+        return x*2;
+    };;
     lua <<R"(
             callIntoCFunc = function(a)
                 return timesTwo(a)
@@ -78,15 +77,31 @@ TEST(LuaWrapper, Expose) {
         )";
     int x = lua["callIntoCFunc"](4);
     ASSERT_EQ(x, 8);
+}
+
+TEST(LuaWrapper, MultipleExposeSameSignature) {
+    luawrapper::Lua lua;
+    lua["timesTwo"] = [](int x)->int {
+        return x*2;
+    };;
+    lua["timesThree"] = [](int x)->int {
+        return x*3;
+    };;
+    lua <<R"(
+            callIntoCFunc = function(a)
+                return timesTwo(a) + timesThree(a)
+            end
+        )";
+    int x = lua["callIntoCFunc"](4);
+    ASSERT_EQ(x, 20);
 
 }
 
 TEST(LuaWrapper, IncorrectArgumentType) {
-    auto timesTwo = [](int x)->int {
-        return x*2;
-    };
     luawrapper::Lua lua;
-    lua["timesTwo"] = luawrapper::detail::adapt<1>(timesTwo);
+    lua["timesTwo"] = [](int x)->int {
+        return x*2;
+    };;
     auto willThrow = [&](){ int x = lua["timesTwo"](std::string("thing")); };
     ASSERT_THROW(willThrow(), luawrapper::detail::IncorrectType);
 }
