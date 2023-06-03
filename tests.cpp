@@ -61,10 +61,6 @@ TEST(LuaWrapper, CallRCharArg) {
     ASSERT_EQ(x, std::string{"thing"});
 }
 
-int thing(int, int) {
-    return 0;
-}
-
 TEST(LuaWrapper, Expose) {
     luawrapper::Lua lua;
     lua["timesTwo"] = [](int x)->int {
@@ -124,6 +120,57 @@ TEST(LuaWrapper, GetGlobalValue) {
         )";
     int foo = lua["foo"];
     ASSERT_EQ(foo, 4);
+}
+
+TEST(LuaWrapper, LambdaWithCapturedState) {
+    luawrapper::Lua lua;
+    int accumulator{0};
+    lua["incrementAccumulator"] = [&accumulator](){ accumulator++; };
+
+    ASSERT_EQ(accumulator, 0);
+    lua["incrementAccumulator"]();
+    ASSERT_EQ(accumulator, 1);
+}
+
+int cFunc(int, int) {
+    return 4;
+}
+
+TEST(LuaWrapper, FcnPtr) {
+    luawrapper::Lua lua;
+    lua["cFunc"] = &cFunc;
+    int res = lua["cFunc"](1, 1);
+    ASSERT_EQ(res, 4);
+}
+
+TEST(LuaWrapper, ChainedScripts) {
+    luawrapper::Lua lua;
+    lua << "x = 1"
+        << "y = 2"
+        << R"(
+            sumXY = function()
+                return x + y
+            end
+        )";
+    int res = lua["sumXY"]();
+    ASSERT_EQ(res, 3);
+}
+
+TEST(LuaWrapper, ChainedScriptsAndCFuncs) {
+    luawrapper::Lua lua;
+
+    // Usability of chaining with these different operators is iffy
+    // Maybe different operators could be used with better precedence
+    // to make this more natural
+    ((lua << "x = 1"
+          << "y = 2")
+          ["sumAB"] = [](int a, int b) {return a + b;})
+          << R"(
+              sumXY = function()
+                  return sumAB(x,y)
+              end
+              )";
+    ASSERT_EQ((int)lua["sumXY"](), 3);
 }
 
 int main(int argc, char **argv) {
