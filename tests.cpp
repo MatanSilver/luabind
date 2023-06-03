@@ -202,6 +202,19 @@ TEST(LuaWrapper, Tuple) {
     ASSERT_EQ(initialTuple, reconstructedTuple);
 }
 
+TEST(LuaWrapper, TupleFromLuaFunction) {
+    luawrapper::Lua lua;
+    using T = std::tuple<int, bool, std::string>;
+    lua << R"(
+        createTuple = function()
+            return {1, false, "thing"}
+        end
+    )";
+    T actual = lua["createTuple"]();
+    T expected{1, false, "thing"};
+    ASSERT_EQ(expected, actual);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
