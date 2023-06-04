@@ -125,7 +125,6 @@ namespace luawrapper {
     private:
         lua_State *fState;
     };
-
 }
 
 #endif //LUAWRAPPER_LUAWRAPPER_HPP

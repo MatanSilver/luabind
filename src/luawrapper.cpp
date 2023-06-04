@@ -1,9 +1,9 @@
 #include "luawrapper.hpp"
-#include "lua.hpp"
+#include <string>
+
 
 namespace luawrapper {
     namespace detail {
-        void dummy() {
-        }
+        void dummy() {}
     }
 }
