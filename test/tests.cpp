@@ -65,7 +65,7 @@ TEST(LuaWrapper, Expose) {
     luawrapper::Lua lua;
     lua["timesTwo"] = [](int x)->int {
         return x*2;
-    };;
+    };
     lua <<R"(
             callIntoCFunc = function(a)
                 return timesTwo(a)
@@ -79,10 +79,10 @@ TEST(LuaWrapper, MultipleExposeSameSignature) {
     luawrapper::Lua lua;
     lua["timesTwo"] = [](int x)->int {
         return x*2;
-    };;
+    };
     lua["timesThree"] = [](int x)->int {
         return x*3;
-    };;
+    };
     lua <<R"(
             callIntoCFunc = function(a)
                 return timesTwo(a) + timesThree(a)
@@ -97,7 +97,7 @@ TEST(LuaWrapper, IncorrectArgumentType) {
     luawrapper::Lua lua;
     lua["timesTwo"] = [](int x)->int {
         return x*2;
-    };;
+    };
     auto willThrow = [&](){ int x = lua["timesTwo"](std::string("thing")); };
     ASSERT_THROW(willThrow(), luawrapper::detail::IncorrectType);
 }
