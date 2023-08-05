@@ -149,8 +149,7 @@ namespace luawrapper::detail {
             std::apply(*gCallable<Callable, UniqueType>, args);
             return 0;
         } else {
-            retType ret = std::apply(*gCallable<Callable, UniqueType>, args);
-            toLua(aState, ret);
+            toLua(aState, std::apply(*gCallable<Callable, UniqueType>, args));
             return 1;
         }
     }
