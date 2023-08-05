@@ -2,12 +2,8 @@
 #define LUAWRAPPER_LUAWRAPPER_HPP
 
 #include "detail.hpp"
-
 #include "lua.hpp"
 #include <string>
-#include <iostream>
-#include <fstream>
-#include <sstream>
 
 namespace luawrapper {
     class Lua {
