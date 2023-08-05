@@ -128,28 +128,21 @@ namespace luawrapper::detail {
 
     template<typename Callable, typename> std::optional<Callable> gCallable;
 
-    template <typename>
-    struct get_args_as_tuple{};
-
     template <typename ...Args>
-    struct get_args_as_tuple<std::tuple<Args...>> {
-        static std::tuple<Args...> apply(lua_State *aState) {
-            return {detail::fromLua<Args>(aState) ...};
-        }
+    std::tuple<Args...> getArgsAsTuple(lua_State *aState, std::tuple<Args...>) {
+        return {detail::fromLua<Args>(aState) ...};
     };
-
 
     template<typename Callable, typename UniqueType>
     int adapted(lua_State *aState) {
         using retType = typename detail::traits::function_traits<Callable>::return_type;
         using argTypes = typename detail::traits::function_traits<Callable>::argument_types;
 
-        auto args = get_args_as_tuple<argTypes>::apply(aState);
         if constexpr (std::is_same_v<retType, void>) {
-            std::apply(*gCallable<Callable, UniqueType>, args);
+            std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, argTypes()));
             return 0;
         } else {
-            toLua(aState, std::apply(*gCallable<Callable, UniqueType>, args));
+            toLua(aState, std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, argTypes())));
             return 1;
         }
     }
