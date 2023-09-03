@@ -2,8 +2,8 @@
 // Created by Matan Silver on 5/30/23.
 //
 
-#ifndef LUAWRAPPER_DETAIL_HPP
-#define LUAWRAPPER_DETAIL_HPP
+#ifndef LUABIND_DETAIL_HPP
+#define LUABIND_DETAIL_HPP
 
 #include "lua.hpp"
 #include "traits.hpp"
@@ -11,7 +11,7 @@
 #include <concepts>
 #include <string>
 
-namespace luawrapper::detail {
+namespace luabind::detail {
     typedef int (*FuncPtr)(lua_State *);
 
     template<typename Callable, typename UniqueType = decltype([](){})>
@@ -175,4 +175,4 @@ namespace luawrapper::detail {
         bool fWasCasted;
     };
 }
-#endif //LUAWRAPPER_DETAIL_HPP
+#endif //LUABIND_DETAIL_HPP

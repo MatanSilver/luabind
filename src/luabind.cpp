@@ -1,6 +1,6 @@
-#include "luawrapper.hpp"
+#include "luabind.hpp"
 
-namespace luawrapper {
+namespace luabind {
     namespace detail {
         void dummy() {}
     }

@@ -1,11 +1,11 @@
-#ifndef LUAWRAPPER_LUAWRAPPER_HPP
-#define LUAWRAPPER_LUAWRAPPER_HPP
+#ifndef LUABIND_LUABIND_HPP
+#define LUABIND_LUABIND_HPP
 
 #include "detail.hpp"
 #include "lua.hpp"
 #include <string>
 
-namespace luawrapper {
+namespace luabind {
     class Lua {
     public:
         Lua() {
@@ -123,4 +123,4 @@ namespace luawrapper {
     };
 }
 
-#endif //LUAWRAPPER_LUAWRAPPER_HPP
+#endif //LUABIND_LUABIND_HPP

@@ -2,14 +2,14 @@
 // Created by Matan Silver on 5/31/23.
 //
 
-#ifndef LUAWRAPPER_TRAITS_HPP
-#define LUAWRAPPER_TRAITS_HPP
+#ifndef LUABIND_TRAITS_HPP
+#define LUABIND_TRAITS_HPP
 
 #include <optional>
 #include <tuple>
 #include <type_traits>
 
-namespace luawrapper::detail::traits {
+namespace luabind::detail::traits {
     template<typename T>
     inline constexpr bool always_false_v = false;
 
@@ -68,4 +68,4 @@ namespace luawrapper::detail::traits {
     constexpr bool is_tuple_v = is_tuple<T>::value;
 }
 
-#endif //LUAWRAPPER_TRAITS_HPP
+#endif //LUABIND_TRAITS_HPP

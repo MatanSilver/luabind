@@ -1,11 +1,11 @@
 //
 // Created by Matan Silver on 5/29/23.
 //
-#include "luawrapper.hpp"
+#include "luabind.hpp"
 #include "gtest/gtest.h"
 
-TEST(LuaWrapper, Call) {
-    luawrapper::Lua lua;
+TEST(LuaBind, Call) {
+    luabind::Lua lua;
     lua <<R"(
             myprint = function(a, b)
                 print(a, b)
@@ -14,8 +14,8 @@ TEST(LuaWrapper, Call) {
     lua["myprint"]("thing", "stuff");
 }
 
-TEST(LuaWrapper, CallRNumberArg) {
-    luawrapper::Lua lua;
+TEST(LuaBind, CallRNumberArg) {
+    luabind::Lua lua;
     lua <<R"(
             myadd = function(a, b)
                 return a+b
@@ -25,8 +25,8 @@ TEST(LuaWrapper, CallRNumberArg) {
     ASSERT_EQ(x, 3);
 }
 
-TEST(LuaWrapper, CallRBooleanArg) {
-    luawrapper::Lua lua;
+TEST(LuaBind, CallRBooleanArg) {
+    luabind::Lua lua;
     lua <<R"(
             myand = function(a, b)
                 return a and b
@@ -39,8 +39,8 @@ TEST(LuaWrapper, CallRBooleanArg) {
     ASSERT_EQ(y, true);
 }
 
-TEST(LuaWrapper, CallRStringArg) {
-    luawrapper::Lua lua;
+TEST(LuaBind, CallRStringArg) {
+    luabind::Lua lua;
     lua <<R"(
             identity = function(a)
                 return a
@@ -50,8 +50,8 @@ TEST(LuaWrapper, CallRStringArg) {
     ASSERT_EQ(x, std::string{"thing"});
 }
 
-TEST(LuaWrapper, CallRCharArg) {
-    luawrapper::Lua lua;
+TEST(LuaBind, CallRCharArg) {
+    luabind::Lua lua;
     lua <<R"(
             identity = function(a)
                 return a
@@ -61,8 +61,8 @@ TEST(LuaWrapper, CallRCharArg) {
     ASSERT_EQ(x, std::string{"thing"});
 }
 
-TEST(LuaWrapper, Expose) {
-    luawrapper::Lua lua;
+TEST(LuaBind, Expose) {
+    luabind::Lua lua;
     lua["timesTwo"] = [](int x)->int {
         return x*2;
     };
@@ -75,8 +75,8 @@ TEST(LuaWrapper, Expose) {
     ASSERT_EQ(x, 8);
 }
 
-TEST(LuaWrapper, MultipleExposeSameSignature) {
-    luawrapper::Lua lua;
+TEST(LuaBind, MultipleExposeSameSignature) {
+    luabind::Lua lua;
     lua["timesTwo"] = [](int x)->int {
         return x*2;
     };
@@ -93,28 +93,28 @@ TEST(LuaWrapper, MultipleExposeSameSignature) {
 
 }
 
-TEST(LuaWrapper, IncorrectArgumentType) {
-    luawrapper::Lua lua;
+TEST(LuaBind, IncorrectArgumentType) {
+    luabind::Lua lua;
     lua["timesTwo"] = [](int x)->int {
         return x*2;
     };
     auto willThrow = [&](){ int x = lua["timesTwo"](std::string("thing")); };
-    ASSERT_THROW(willThrow(), luawrapper::detail::IncorrectType);
+    ASSERT_THROW(willThrow(), luabind::detail::IncorrectType);
 }
 
-TEST(LuaWrapper, IncorrectReturnType) {
-    luawrapper::Lua lua;
+TEST(LuaBind, IncorrectReturnType) {
+    luabind::Lua lua;
     lua <<R"(
             identity = function(a)
                 return a
             end
         )";
     auto willThrow = [&](){ std::string x = lua["identity"](1);};
-    ASSERT_THROW(willThrow(), luawrapper::detail::IncorrectType);
+    ASSERT_THROW(willThrow(), luabind::detail::IncorrectType);
 }
 
-TEST(LuaWrapper, GetGlobalValue) {
-    luawrapper::Lua lua;
+TEST(LuaBind, GetGlobalValue) {
+    luabind::Lua lua;
     lua <<R"(
             foo=4
         )";
@@ -122,8 +122,8 @@ TEST(LuaWrapper, GetGlobalValue) {
     ASSERT_EQ(foo, 4);
 }
 
-TEST(LuaWrapper, LambdaWithCapturedState) {
-    luawrapper::Lua lua;
+TEST(LuaBind, LambdaWithCapturedState) {
+    luabind::Lua lua;
     int accumulator{0};
     lua["incrementAccumulator"] = [&accumulator](){ accumulator++; };
 
@@ -136,15 +136,15 @@ int cFunc(int, int) {
     return 4;
 }
 
-TEST(LuaWrapper, FcnPtr) {
-    luawrapper::Lua lua;
+TEST(LuaBind, FcnPtr) {
+    luabind::Lua lua;
     lua["cFunc"] = &cFunc;
     int res = lua["cFunc"](1, 1);
     ASSERT_EQ(res, 4);
 }
 
-TEST(LuaWrapper, ChainedScripts) {
-    luawrapper::Lua lua;
+TEST(LuaBind, ChainedScripts) {
+    luabind::Lua lua;
     lua << "x = 1"
         << "y = 2"
         << R"(
@@ -156,8 +156,8 @@ TEST(LuaWrapper, ChainedScripts) {
     ASSERT_EQ(res, 3);
 }
 
-TEST(LuaWrapper, ChainedScriptsAndCFuncs) {
-    luawrapper::Lua lua;
+TEST(LuaBind, ChainedScriptsAndCFuncs) {
+    luabind::Lua lua;
 
     // Usability of chaining with these different operators is iffy
     // Maybe different operators could be used with better precedence
@@ -173,24 +173,24 @@ TEST(LuaWrapper, ChainedScriptsAndCFuncs) {
     ASSERT_EQ((int)lua["sumXY"](), 3);
 }
 
-TEST(LuaWrapper, IntVector) {
-    luawrapper::Lua lua;
+TEST(LuaBind, IntVector) {
+    luabind::Lua lua;
     std::vector initialVec{1, 3, 4, 5};
     lua["newvec"] = initialVec;
     std::vector<int> reconstructedVec = lua["newvec"];
     ASSERT_EQ(initialVec, reconstructedVec);
 }
 
-TEST(LuaWrapper, StringVector) {
-    luawrapper::Lua lua;
+TEST(LuaBind, StringVector) {
+    luabind::Lua lua;
     std::vector<std::string> initialVec{"thing", "stuff"};
     lua["newvec"] = initialVec;
     std::vector<std::string> reconstructedVec = lua["newvec"];
     ASSERT_EQ(initialVec, reconstructedVec);
 }
 
-TEST(LuaWrapper, Tuple) {
-    luawrapper::Lua lua;
+TEST(LuaBind, Tuple) {
+    luabind::Lua lua;
     // We can even have tuples containing tuples!
     using T = std::tuple<std::string,
                          int,
@@ -202,8 +202,8 @@ TEST(LuaWrapper, Tuple) {
     ASSERT_EQ(initialTuple, reconstructedTuple);
 }
 
-TEST(LuaWrapper, TupleFromLuaFunction) {
-    luawrapper::Lua lua;
+TEST(LuaBind, TupleFromLuaFunction) {
+    luabind::Lua lua;
     using T = std::tuple<int, bool, std::string>;
     lua << R"(
         createTuple = function()
