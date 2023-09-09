@@ -98,7 +98,7 @@ TEST(LuaBind, IncorrectArgumentType) {
     lua["timesTwo"] = [](int x)->int {
         return x*2;
     };
-    auto willThrow = [&](){ int x = lua["timesTwo"](std::string("thing")); };
+    auto willThrow = [&](){ (int)lua["timesTwo"](std::string("thing")); };
     ASSERT_THROW(willThrow(), luabind::detail::IncorrectType);
 }
 

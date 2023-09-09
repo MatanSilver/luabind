@@ -80,7 +80,8 @@ namespace luabind {
         }
 
         void loadScript(const std::string& aScript) {
-            assert(luaL_dostring(fState, aScript.c_str()) == LUA_OK);
+            [[maybe_unused]] auto res = luaL_dostring(fState, aScript.c_str());
+            assert(res == LUA_OK);
         }
 
         // lazy function callx evaluation helper

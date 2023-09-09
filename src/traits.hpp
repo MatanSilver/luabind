@@ -8,6 +8,9 @@
 #include <optional>
 #include <tuple>
 #include <type_traits>
+#include <vector>
+#include <stdexcept>
+#include <cassert>
 
 namespace luabind::detail::traits {
     template<typename T>
@@ -42,11 +45,6 @@ namespace luabind::detail::traits {
         using return_type = typename function_traits<call_type>::return_type;
         using argument_types = typename function_traits<call_type>::argument_types;
     };
-
-    template <typename T>
-    const char* type_to_string() {
-        return __PRETTY_FUNCTION__;
-    }
 
     template <typename>
     struct is_vector : std::false_type{};

@@ -1,0 +1,12 @@
+{
+  "name" : "luabind",
+  "version-string" : "1.0.0",
+  "builtin-baseline" : "962e5e39f8a25f42522f51fffc574e05a3efd26b",
+  "dependencies" : [ {
+    "name" : "lua",
+    "version>=" : "5.4.6"
+  }, {
+    "name" : "gtest",
+    "version>=" : "1.13.0"
+  } ]
+}

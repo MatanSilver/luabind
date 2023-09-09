@@ -1,6 +1,0 @@
-[requires]
-lua/5.4.6
-gtest/cci.20210126
-
-[generators]
-cmake
