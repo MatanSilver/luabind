@@ -3,3 +3,5 @@ cmake-build-release
 cmake-build-relwithdebinfo
 .idea
 vcpkg_installed
+test/cmake-build-debug
+test/cmake-build-debug-coverage
