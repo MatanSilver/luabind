@@ -67,13 +67,13 @@ namespace luabind {
         }
 
         template <typename ...Args>
-        void callx(const std::string& aFunctionName, const Args&... args) {
+        void callWithoutReturnValue(const std::string& aFunctionName, const Args&... args) {
             pushFunctionAndArgs(aFunctionName, args...);
             lua_call(fState, sizeof...(args), 0);
         }
 
         template <typename ...Args>
-        auto callxx(const std::string& aFunctionName, const Args&... args) {
+        auto callWithReturnValue(const std::string& aFunctionName, const Args&... args) {
             pushFunctionAndArgs(aFunctionName, args...);
             lua_call(fState, sizeof...(args), 1);
             return detail::RetHelper(fState);
@@ -84,7 +84,7 @@ namespace luabind {
             assert(res == LUA_OK);
         }
 
-        // lazy function callx evaluation helper
+        // lazy function callWithoutReturnValue evaluation helper
         // also handles functions with/without return values based on
         // the casting history
         template <typename ...Args>
@@ -97,7 +97,7 @@ namespace luabind {
             ~CallSpecialHelper() {
                 // If we never called the operator T(), we should run the function with no return val
                 if (!fWasCasted) {
-                    auto lam = [&](const auto&... args){ fLua.callx(args...);};
+                    auto lam = [&](const auto&... args){ fLua.callWithoutReturnValue(args...);};
                     std::apply(lam, std::tuple_cat(std::tuple{fFunctionName}, fArgs));
                 }
             }
@@ -105,7 +105,7 @@ namespace luabind {
             template <typename T>
             operator T() {
                 fWasCasted = true;
-                auto lam = [&](const auto&... args){return fLua.callxx(args...);};
+                auto lam = [&](const auto&... args){return fLua.callWithReturnValue(args...);};
                 return std::apply(lam, std::tuple_cat(std::tuple{fFunctionName}, fArgs));
             }
         private:
