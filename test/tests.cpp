@@ -109,7 +109,25 @@ TEST(LuaBind, IncorrectReturnType) {
                 return a
             end
         )";
-    auto willThrow = [&](){ std::string x = lua["identity"](1);};
+    auto willThrow = [&](){ std::string x = lua["identity"](1); };
+    ASSERT_THROW(willThrow(), luabind::detail::IncorrectType);
+}
+
+TEST(LuaBind, IncorrectTypeBool) {
+    luabind::Lua lua;
+    lua <<R"(
+        isNotBool = "thing"
+    )";
+    auto willThrow = [&]() { bool x = lua["isNotBool"]; };
+    ASSERT_THROW(willThrow(), luabind::detail::IncorrectType);
+}
+
+TEST(LuaBind, IncorrectTypeVector) {
+    luabind::Lua lua;
+    lua <<R"(
+        isNotVector = "thing"
+    )";
+    auto willThrow = [&]() { std::vector<int> x = lua["isNotVector"]; };
     ASSERT_THROW(willThrow(), luabind::detail::IncorrectType);
 }
 
