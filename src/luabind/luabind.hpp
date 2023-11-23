@@ -1,7 +1,7 @@
 #ifndef LUABIND_LUABIND_HPP
 #define LUABIND_LUABIND_HPP
 
-#include "detail.hpp"
+#include "luabind/detail.hpp"
 #include "lua.hpp"
 #include <string>
 

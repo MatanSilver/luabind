@@ -6,7 +6,7 @@
 #define LUABIND_DETAIL_HPP
 
 #include "lua.hpp"
-#include "traits.hpp"
+#include "luabind/traits.hpp"
 
 #include <concepts>
 #include <string>

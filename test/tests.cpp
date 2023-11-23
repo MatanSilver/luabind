@@ -1,7 +1,7 @@
 //
 // Created by Matan Silver on 5/29/23.
 //
-#include "luabind.hpp"
+#include "luabind/luabind.hpp"
 #include "gtest/gtest.h"
 
 TEST(LuaBind, Call) {
