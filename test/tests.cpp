@@ -85,6 +85,21 @@ TEST(LuaBind, ExposeCaptures) {
     ASSERT_EQ(x, 1);
 }
 
+TEST(LuaBind, ExposeCapturesShared) {
+    luabind::Lua lua1;
+    luabind::Lua lua2;
+    int x = 0;
+    auto lam = [&x]() {
+        ++x;
+    };
+    lua1["incrementX"] = lam;
+    lua2["incrementX"] = lam;
+    lua1["incrementX"]();
+    ASSERT_EQ(x, 1);
+    lua2["incrementX"]();
+    ASSERT_EQ(x, 2);
+}
+
 int add(int a, int b) {
     return a + b;
 }
