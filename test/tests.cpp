@@ -75,6 +75,26 @@ TEST(LuaBind, Expose) {
     ASSERT_EQ(x, 8);
 }
 
+TEST(LuaBind, ExposeCaptures) {
+    luabind::Lua lua;
+    int x = 0;
+    lua["incrementX"] = [&x]() {
+        ++x;
+    };
+    lua["incrementX"]();
+    ASSERT_EQ(x, 1);
+}
+
+int add(int a, int b) {
+    return a + b;
+}
+
+TEST(LuaBind, ExposeCStyleFunction) {
+    luabind::Lua lua;
+    lua["myadd"] = &add;
+    ASSERT_EQ((int)lua["myadd"](1, 2), 3);
+}
+
 TEST(LuaBind, MultipleExposeSameSignature) {
     luabind::Lua lua;
     lua["timesTwo"] = [](int x)->int {
