@@ -88,7 +88,7 @@ TEST(LuaBind, CallRStringArg) {
     ASSERT_EQ(x, std::string{"thing"});
 }
 
-TEST(LuaBind, CallRCharArg) {
+TEST(LuaBind, CallRCharPtrArg) {
     luabind::Lua lua;
     lua <<R"(
             identity = function(a)
@@ -97,6 +97,17 @@ TEST(LuaBind, CallRCharArg) {
         )";
     std::string x = lua["identity"](std::string("thing"));
     ASSERT_EQ(x, std::string{"thing"});
+}
+
+TEST(LuaBind, CallRCharArg) {
+    luabind::Lua lua;
+    lua <<R"(
+            identity = function(a)
+                return a
+            end
+        )";
+    char x = lua["identity"]('b');
+    ASSERT_EQ(x, 'b');
 }
 
 TEST(LuaBind, Expose) {
