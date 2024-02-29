@@ -4,6 +4,44 @@
 #include "luabind/luabind.hpp"
 #include "gtest/gtest.h"
 
+// Static asserts act as unittests for compile-time functionality
+static_assert(!luabind::detail::traits::always_false_v<int>);
+
+struct CallableStruct {
+    char operator() (int, bool) { return 'a'; }
+    char nonConstMethod(int, bool) { return 'a'; }
+    char constMethod(int, bool) const {return 'a'; }
+};
+
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype([](int, bool){})>::return_type, void>);
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype([](int, bool){ return 1; })>::return_type, int>);
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype([](int, bool){ return 1; })>::argument_types, std::tuple<int, bool>>);
+
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<void (*)(int, bool)>::return_type, void>);
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<int (*)(int, bool)>::return_type, int>);
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<int (*)(int, bool)>::argument_types, std::tuple<int, bool>>);
+
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<CallableStruct>::return_type, char>);
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype(&CallableStruct::constMethod)>::return_type, char>);
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype(&CallableStruct::nonConstMethod)>::return_type, char>);
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype(&CallableStruct::constMethod)>::argument_types, std::tuple<int, bool>>);
+static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype(&CallableStruct::nonConstMethod)>::argument_types, std::tuple<int, bool>>);
+
+static_assert(luabind::detail::traits::is_vector_v<std::vector<int>>);
+static_assert(luabind::detail::traits::is_vector_v<std::vector<std::string>>);
+static_assert(luabind::detail::traits::is_vector_v<std::vector<std::vector<int>>>);
+static_assert(!luabind::detail::traits::is_vector_v<int>);
+static_assert(!luabind::detail::traits::is_vector_v<std::string>);
+static_assert(!luabind::detail::traits::is_vector_v<void>);
+
+static_assert(luabind::detail::traits::is_tuple_v<std::tuple<int>>);
+static_assert(luabind::detail::traits::is_tuple_v<std::tuple<int, bool>>);
+static_assert(luabind::detail::traits::is_tuple_v<std::tuple<std::string>>);
+static_assert(luabind::detail::traits::is_tuple_v<std::tuple<std::vector<int>>>);
+static_assert(!luabind::detail::traits::is_tuple_v<std::vector<std::tuple<>>>);
+static_assert(!luabind::detail::traits::is_tuple_v<std::string>);
+static_assert(!luabind::detail::traits::is_tuple_v<void>);
+
 TEST(LuaBind, Call) {
     luabind::Lua lua;
     lua <<R"(
