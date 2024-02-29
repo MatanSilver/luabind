@@ -4,47 +4,59 @@
 #include "luabind/luabind.hpp"
 #include "gtest/gtest.h"
 
+using namespace luabind;
+using namespace luabind::detail;
+
 // Static asserts act as unittests for compile-time functionality
-static_assert(!luabind::detail::traits::always_false_v<int>);
+static_assert(!traits::always_false_v<int>);
 
 struct CallableStruct {
-    char operator() (int, bool) { return 'a'; }
+    char operator()(int, bool) { return 'a'; }
+
     char nonConstMethod(int, bool) { return 'a'; }
-    char constMethod(int, bool) const {return 'a'; }
+
+    char constMethod(int, bool) const { return 'a'; }
 };
 
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype([](int, bool){})>::return_type, void>);
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype([](int, bool){ return 1; })>::return_type, int>);
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype([](int, bool){ return 1; })>::argument_types, std::tuple<int, bool>>);
+static_assert(std::is_same_v<traits::function_traits<decltype([](int, bool) {})>::return_type, void>);
+static_assert(std::is_same_v<traits::function_traits<decltype([](int,
+                                                                 bool) { return 1; })>::return_type, int>);
+static_assert(std::is_same_v<traits::function_traits<decltype([](int,
+                                                                 bool) { return 1; })>::argument_types, std::tuple<int, bool>>);
 
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<void (*)(int, bool)>::return_type, void>);
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<int (*)(int, bool)>::return_type, int>);
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<int (*)(int, bool)>::argument_types, std::tuple<int, bool>>);
+static_assert(std::is_same_v<traits::function_traits<void (*)(int, bool)>::return_type, void>);
+static_assert(std::is_same_v<traits::function_traits<int (*)(int, bool)>::return_type, int>);
+static_assert(std::is_same_v<traits::function_traits<int (*)(int,
+                                                             bool)>::argument_types, std::tuple<int, bool>>);
 
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<CallableStruct>::return_type, char>);
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype(&CallableStruct::constMethod)>::return_type, char>);
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype(&CallableStruct::nonConstMethod)>::return_type, char>);
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype(&CallableStruct::constMethod)>::argument_types, std::tuple<int, bool>>);
-static_assert(std::is_same_v<luabind::detail::traits::function_traits<decltype(&CallableStruct::nonConstMethod)>::argument_types, std::tuple<int, bool>>);
+static_assert(std::is_same_v<traits::function_traits<CallableStruct>::return_type, char>);
+static_assert(
+        std::is_same_v<traits::function_traits<decltype(&CallableStruct::constMethod)>::return_type, char>);
+static_assert(
+        std::is_same_v<traits::function_traits<decltype(&CallableStruct::nonConstMethod)>::return_type, char>);
+static_assert(
+        std::is_same_v<traits::function_traits<decltype(&CallableStruct::constMethod)>::argument_types, std::tuple<int, bool>>);
+static_assert(
+        std::is_same_v<traits::function_traits<decltype(&CallableStruct::nonConstMethod)>::argument_types, std::tuple<int, bool>>);
 
-static_assert(luabind::detail::traits::is_vector_v<std::vector<int>>);
-static_assert(luabind::detail::traits::is_vector_v<std::vector<std::string>>);
-static_assert(luabind::detail::traits::is_vector_v<std::vector<std::vector<int>>>);
-static_assert(!luabind::detail::traits::is_vector_v<int>);
-static_assert(!luabind::detail::traits::is_vector_v<std::string>);
-static_assert(!luabind::detail::traits::is_vector_v<void>);
+static_assert(traits::is_vector_v<std::vector<int>>);
+static_assert(traits::is_vector_v<std::vector<std::string>>);
+static_assert(traits::is_vector_v<std::vector<std::vector<int>>>);
+static_assert(!traits::is_vector_v<int>);
+static_assert(!traits::is_vector_v<std::string>);
+static_assert(!traits::is_vector_v<void>);
 
-static_assert(luabind::detail::traits::is_tuple_v<std::tuple<int>>);
-static_assert(luabind::detail::traits::is_tuple_v<std::tuple<int, bool>>);
-static_assert(luabind::detail::traits::is_tuple_v<std::tuple<std::string>>);
-static_assert(luabind::detail::traits::is_tuple_v<std::tuple<std::vector<int>>>);
-static_assert(!luabind::detail::traits::is_tuple_v<std::vector<std::tuple<>>>);
-static_assert(!luabind::detail::traits::is_tuple_v<std::string>);
-static_assert(!luabind::detail::traits::is_tuple_v<void>);
+static_assert(traits::is_tuple_v<std::tuple<int>>);
+static_assert(traits::is_tuple_v<std::tuple<int, bool>>);
+static_assert(traits::is_tuple_v<std::tuple<std::string>>);
+static_assert(traits::is_tuple_v<std::tuple<std::vector<int>>>);
+static_assert(!traits::is_tuple_v<std::vector<std::tuple<>>>);
+static_assert(!traits::is_tuple_v<std::string>);
+static_assert(!traits::is_tuple_v<void>);
 
 TEST(LuaBind, Call) {
     luabind::Lua lua;
-    lua <<R"(
+    lua << R"(
             myprint = function(a, b)
                 print(a, b)
             end
@@ -54,7 +66,7 @@ TEST(LuaBind, Call) {
 
 TEST(LuaBind, CallRNumberArg) {
     luabind::Lua lua;
-    lua <<R"(
+    lua << R"(
             myadd = function(a, b)
                 return a+b
             end
@@ -65,7 +77,7 @@ TEST(LuaBind, CallRNumberArg) {
 
 TEST(LuaBind, CallRBooleanArg) {
     luabind::Lua lua;
-    lua <<R"(
+    lua << R"(
             myand = function(a, b)
                 return a and b
             end
@@ -79,7 +91,7 @@ TEST(LuaBind, CallRBooleanArg) {
 
 TEST(LuaBind, CallRStringArg) {
     luabind::Lua lua;
-    lua <<R"(
+    lua << R"(
             identity = function(a)
                 return a
             end
@@ -90,7 +102,7 @@ TEST(LuaBind, CallRStringArg) {
 
 TEST(LuaBind, CallRCharPtrArg) {
     luabind::Lua lua;
-    lua <<R"(
+    lua << R"(
             identity = function(a)
                 return a
             end
@@ -101,7 +113,7 @@ TEST(LuaBind, CallRCharPtrArg) {
 
 TEST(LuaBind, CallRCharArg) {
     luabind::Lua lua;
-    lua <<R"(
+    lua << R"(
             identity = function(a)
                 return a
             end
@@ -112,10 +124,10 @@ TEST(LuaBind, CallRCharArg) {
 
 TEST(LuaBind, Expose) {
     luabind::Lua lua;
-    lua["timesTwo"] = [](int x)->int {
-        return x*2;
+    lua["timesTwo"] = [](int x) -> int {
+        return x * 2;
     };
-    lua <<R"(
+    lua << R"(
             callIntoCFunc = function(a)
                 return timesTwo(a)
             end
@@ -156,18 +168,18 @@ int add(int a, int b) {
 TEST(LuaBind, ExposeCStyleFunction) {
     luabind::Lua lua;
     lua["myadd"] = &add;
-    ASSERT_EQ((int)lua["myadd"](1, 2), 3);
+    ASSERT_EQ((int) lua["myadd"](1, 2), 3);
 }
 
 TEST(LuaBind, MultipleExposeSameSignature) {
     luabind::Lua lua;
-    lua["timesTwo"] = [](int x)->int {
-        return x*2;
+    lua["timesTwo"] = [](int x) -> int {
+        return x * 2;
     };
-    lua["timesThree"] = [](int x)->int {
-        return x*3;
+    lua["timesThree"] = [](int x) -> int {
+        return x * 3;
     };
-    lua <<R"(
+    lua << R"(
             callIntoCFunc = function(a)
                 return timesTwo(a) + timesThree(a)
             end
@@ -179,45 +191,45 @@ TEST(LuaBind, MultipleExposeSameSignature) {
 
 TEST(LuaBind, IncorrectArgumentType) {
     luabind::Lua lua;
-    lua["timesTwo"] = [](int x)->int {
-        return x*2;
+    lua["timesTwo"] = [](int x) -> int {
+        return x * 2;
     };
-    auto willThrow = [&](){ [[maybe_unused]] int x = lua["timesTwo"](std::string("thing")); };
-    ASSERT_THROW(willThrow(), luabind::detail::IncorrectType);
+    auto willThrow = [&]() { [[maybe_unused]] int x = lua["timesTwo"](std::string("thing")); };
+    ASSERT_THROW(willThrow(), IncorrectType);
 }
 
 TEST(LuaBind, IncorrectReturnType) {
     luabind::Lua lua;
-    lua <<R"(
+    lua << R"(
             identity = function(a)
                 return a
             end
         )";
-    auto willThrow = [&](){ std::string x = lua["identity"](1); };
-    ASSERT_THROW(willThrow(), luabind::detail::IncorrectType);
+    auto willThrow = [&]() { std::string x = lua["identity"](1); };
+    ASSERT_THROW(willThrow(), IncorrectType);
 }
 
 TEST(LuaBind, IncorrectTypeBool) {
     luabind::Lua lua;
-    lua <<R"(
+    lua << R"(
         isNotBool = "thing"
     )";
     auto willThrow = [&]() { bool x = lua["isNotBool"]; };
-    ASSERT_THROW(willThrow(), luabind::detail::IncorrectType);
+    ASSERT_THROW(willThrow(), IncorrectType);
 }
 
 TEST(LuaBind, IncorrectTypeVector) {
     luabind::Lua lua;
-    lua <<R"(
+    lua << R"(
         isNotVector = "thing"
     )";
     auto willThrow = [&]() { std::vector<int> x = lua["isNotVector"]; };
-    ASSERT_THROW(willThrow(), luabind::detail::IncorrectType);
+    ASSERT_THROW(willThrow(), IncorrectType);
 }
 
 TEST(LuaBind, GetGlobalValue) {
     luabind::Lua lua;
-    lua <<R"(
+    lua << R"(
             foo=4
         )";
     int foo = lua["foo"];
@@ -227,7 +239,7 @@ TEST(LuaBind, GetGlobalValue) {
 TEST(LuaBind, LambdaWithCapturedState) {
     luabind::Lua lua;
     int accumulator{0};
-    lua["incrementAccumulator"] = [&accumulator](){ accumulator++; };
+    lua["incrementAccumulator"] = [&accumulator]() { accumulator++; };
 
     ASSERT_EQ(accumulator, 0);
     lua["incrementAccumulator"]();
@@ -266,13 +278,13 @@ TEST(LuaBind, ChainedScriptsAndCFuncs) {
     // to make this more natural
     ((lua << "x = 1"
           << "y = 2")
-          ["sumAB"] = [](int a, int b) {return a + b;})
-          << R"(
+     ["sumAB"] = [](int a, int b) { return a + b; })
+            << R"(
               sumXY = function()
                   return sumAB(x,y)
               end
               )";
-    ASSERT_EQ((int)lua["sumXY"](), 3);
+    ASSERT_EQ((int) lua["sumXY"](), 3);
 }
 
 TEST(LuaBind, IntVector) {
@@ -295,9 +307,9 @@ TEST(LuaBind, Tuple) {
     luabind::Lua lua;
     // We can even have tuples containing tuples!
     using T = std::tuple<std::string,
-                         int,
-                         bool,
-                         std::tuple<int, bool>>;
+            int,
+            bool,
+            std::tuple<int, bool>>;
     T initialTuple{"thing", 1, true, {4, false}};
     lua["newtuple"] = initialTuple;
     T reconstructedTuple = lua["newtuple"];
