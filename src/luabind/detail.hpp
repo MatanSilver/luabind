@@ -65,8 +65,6 @@ namespace luabind::detail {
             lua_pushnumber(aState, std::forward<T>(aVal));
         } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
             lua_pushlstring(aState, aVal.c_str(), aVal.length());
-        } else if constexpr (std::is_same_v<std::decay_t<T>, char>) {
-            lua_pushlstring(aState, &aVal, 1);
         } else if constexpr (std::is_same_v<std::decay_t<T>, char *> || std::is_same_v<std::decay_t<T>, const char *>) {
             lua_pushstring(aState, std::forward<T>(aVal));
         } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
@@ -111,18 +109,6 @@ namespace luabind::detail {
             lua_pop(aState, 1);
             return ret;
             // We don't support const char* for memory safety reasons
-        } else if constexpr (std::is_same_v<std::decay_t<T>, char>) {
-            if (!lua_isstring(aState, -1) || lua_isnumber(aState, -1)) {
-                // lua_isstring returns true for numbers, oddly
-                throw IncorrectType();
-            }
-            size_t len;
-            const char *buf = lua_tolstring(aState, -1, &len);
-            if (len != 1) {
-                throw IncorrectType();
-            }
-            lua_pop(aState, 1);
-            return buf[0];
         } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
             if (!lua_istable(aState, -1)) {
                 throw IncorrectType();
