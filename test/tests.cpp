@@ -107,7 +107,7 @@ TEST(LuaBind, CallRCharPtrArg) {
                 return a
             end
         )";
-    std::string x = lua["identity"](std::string("thing"));
+    std::string x = lua["identity"]("thing");
     ASSERT_EQ(x, std::string{"thing"});
 }
 
