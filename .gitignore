@@ -12,3 +12,4 @@ test/cmake-build-debug-coverage
 test/cmake-build-relwithdebinfo
 test/cmake-build-default
 test/cmake-build-minsizerel
+vcpkg
