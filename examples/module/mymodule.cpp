@@ -6,7 +6,7 @@
 #include "lauxlib.h"
 
 static const struct luaL_Reg functions [] = {
-        { "say_hello", luabind::detail::adapt([](){ return "hello world!"; })},
+        { "say_hello", luabind::adapt([](){ return "hello world!"; })},
         {NULL, NULL}
 };
 

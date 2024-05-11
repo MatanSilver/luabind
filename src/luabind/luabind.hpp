@@ -71,12 +71,14 @@ namespace luabind::detail::traits {
     constexpr bool is_tuple_v = is_tuple<T>::value;
 }
 
-namespace luabind::detail {
+namespace luabind {
     typedef int (*FuncPtr)(lua_State *);
 
     template<typename Callable, typename UniqueType = decltype([]() {})>
     FuncPtr adapt(const Callable &aFunc);
+}
 
+namespace luabind::detail {
     template<typename T>
     void toLua(lua_State *aState, T &&aVal);
 
@@ -136,7 +138,7 @@ namespace luabind::detail {
             toLuaTuple(aState, std::forward<T>(aVal));
         } else {
             // TODO: somehow check if T is a callable, and static assert for other unsupported types
-            lua_pushcfunction(aState, detail::adapt(std::forward<T>(aVal)));
+            lua_pushcfunction(aState, adapt(std::forward<T>(aVal)));
         }
     }
 
@@ -204,12 +206,6 @@ namespace luabind::detail {
             toLua(aState, std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, argTypes())));
             return 1;
         }
-    }
-
-    template<typename Callable, typename UniqueType>
-    FuncPtr adapt(const Callable &aFunc) {
-        gCallable<Callable, UniqueType>.emplace(aFunc);
-        return &adapted<Callable, UniqueType>;
     }
 
     class RetHelper {
@@ -354,6 +350,12 @@ namespace luabind {
     private:
         lua_State *fState;
     };
+
+    template<typename Callable, typename UniqueType>
+    FuncPtr adapt(const Callable &aFunc) {
+        detail::gCallable<Callable, UniqueType>.emplace(aFunc);
+        return &detail::adapted<Callable, UniqueType>;
+    }
 }
 
 #endif //LUABIND_LUABIND_HPP
