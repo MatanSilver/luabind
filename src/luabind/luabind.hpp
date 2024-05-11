@@ -23,8 +23,8 @@ namespace luabind {
         }
 
         struct GetGlobalHelper {
-            GetGlobalHelper(const std::string &aFunctionToCall, Lua &aLua)
-                    : fGlobalName(aFunctionToCall), fLua(aLua) {}
+            GetGlobalHelper(const std::string &aGlobalName, Lua &aLua)
+                    : fGlobalName(aGlobalName), fLua(aLua) {}
 
             template<typename ...Args>
             auto operator()(const Args &... args) {
@@ -50,11 +50,10 @@ namespace luabind {
         };
 
         /*
-         * Gets the global of the name aFunctionToCall
-         * Could be generalized to get any global, not just functions
+         * Gets the global of the name aGlobalName
          */
-        auto operator[](const std::string &aFunctionToCall) {
-            return GetGlobalHelper{aFunctionToCall, *this};
+        auto operator[](const std::string &aGlobalName) {
+            return GetGlobalHelper{aGlobalName, *this};
         }
 
     private:
