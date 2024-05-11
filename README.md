@@ -81,3 +81,9 @@ cmake --build .
     T reconstructedTuple = lua["newtuple"];
     ASSERT_EQ(initialTuple, reconstructedTuple);
 ```
+
+# Compiling a Lua Module
+
+You can also use utilities from this library to implement a C library that can be "require"-d by a lua interpreter. See the examples/module directory for an example. The Dockerfile documents the build process and can be built with:
+```docker build -f examples/module/Dockerfile -t luabind_module .
+```

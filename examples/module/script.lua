@@ -1,6 +1,6 @@
 #!/usr/bin/env lua5.4
 package.cpath = "./?.so"
-require "hello"
+require "mymodule"
 
 print("Testing say_hello()")
-assert("hello world!" == hello.say_hello())
+assert("hello world!" == mymodule.say_hello())

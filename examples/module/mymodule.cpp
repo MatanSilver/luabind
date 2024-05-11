@@ -3,15 +3,19 @@
 //
 
 #include "luabind/luabind.hpp"
-
-#include <string>
+#include "lauxlib.h"
 
 static const struct luaL_Reg functions [] = {
         { "say_hello", luabind::detail::adapt([](){ return "hello world!"; })},
         {NULL, NULL}
 };
 
-int luaopen_hello(lua_State *L) {
-    luaL_register(L, "hello", functions);
+extern "C" {
+
+int luaopen_mymodule(lua_State *L) {
+    luaL_newlib(L, functions);
+    lua_setglobal(L, "mymodule");
     return 1;
+}
+
 }

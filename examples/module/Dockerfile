@@ -7,9 +7,10 @@ RUN apk update && \
         lua5.4-dev
 
 WORKDIR /module
-COPY mymodule.cpp mymodule.cpp
-COPY ../../src/luabind/ luabind/
+COPY examples/module/ ./
+COPY src/luabind/ luabind/
 
-RUN gcc mymodule.cpp -llua -o mymodule.so
+RUN gcc -std=c++20 -I/usr/include/lua5.4 -L/usr/lib/lua5.4 -llua -shared mymodule.cpp -o mymodule.so
+RUN lua5.4 script.lua
 
 ENTRYPOINT [ "./script.lua" ]
