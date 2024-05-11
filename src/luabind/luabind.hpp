@@ -257,6 +257,8 @@ namespace luabind {
             luaL_openlibs(fState);
         }
 
+        Lua(lua_State *aState) : fState(aState) {}
+
         ~Lua() {
             lua_close(fState);
         }
