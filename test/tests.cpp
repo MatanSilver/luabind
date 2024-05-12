@@ -16,6 +16,8 @@ struct CallableStruct {
     char nonConstMethod(int, bool) { return 'a'; }
 
     char constMethod(int, bool) const { return 'a'; }
+
+    static char staticMethod(int, bool) { return 'a'; }
 };
 
 static_assert(std::is_same_v<traits::function_traits<decltype([](int, bool) {})>::return_type, void>);
@@ -35,9 +37,13 @@ static_assert(
 static_assert(
         std::is_same_v<traits::function_traits<decltype(&CallableStruct::nonConstMethod)>::return_type, char>);
 static_assert(
+        std::is_same_v<traits::function_traits<decltype(&CallableStruct::staticMethod)>::return_type, char>);
+static_assert(
         std::is_same_v<traits::function_traits<decltype(&CallableStruct::constMethod)>::argument_types, std::tuple<int, bool>>);
 static_assert(
         std::is_same_v<traits::function_traits<decltype(&CallableStruct::nonConstMethod)>::argument_types, std::tuple<int, bool>>);
+static_assert(
+        std::is_same_v<traits::function_traits<decltype(&CallableStruct::staticMethod)>::argument_types, std::tuple<int, bool>>);
 
 static_assert(traits::is_vector_v<std::vector<int>>);
 static_assert(traits::is_vector_v<std::vector<std::string>>);

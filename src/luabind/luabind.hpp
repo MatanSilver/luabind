@@ -27,7 +27,7 @@ namespace luabind::detail::traits {
      * Determining if something is callable is complicated--
      * Something "callable" can be:
      * 1) A c-style function pointer
-     * 2) An object with a call operator (e.g. a lambda)
+     * 2) An object with a call operator (e.g. a lambda, or struct with operator())
      * 3) A std::function
      * 4) A method
      * 5) A const method
