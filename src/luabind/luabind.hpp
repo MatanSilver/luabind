@@ -162,23 +162,23 @@ namespace luabind::detail {
     }
 
     /*
-     * toLuaTupleHelper uses a fold-expression along with a compile-time
+     * setTableElementsFromTuple uses a fold-expression along with a compile-time
      * index_sequence to expand a single syntactic call to setTableElement
      * to N calls, one for each tuple element.
      */
     template<typename ...Args, std::size_t... I>
-    void toLuaTupleHelper(lua_State *aState, const std::tuple<Args...> &aVal, std::index_sequence<I...>) {
+    void setTableElementsFromTuple(lua_State *aState, const std::tuple<Args...> &aVal, std::index_sequence<I...>) {
         (setTableElement(aState, std::get<I>(aVal), I + 1), ...);
     }
 
     template<typename T>
     void toLuaTuple(lua_State *aState, const T &aVal) {
         lua_createtable(aState, std::tuple_size_v<std::decay_t<T>>, 0);
-        toLuaTupleHelper(aState, aVal, std::make_index_sequence<std::tuple_size_v<std::decay_t<T>>>());
+        setTableElementsFromTuple(aState, aVal, std::make_index_sequence<std::tuple_size_v<std::decay_t<T>>>());
     }
 
     /*
-     * fromLuaTupleHelper uses a fold-expression along with a compile-time
+     * getTableElementsAsTuple uses a fold-expression along with a compile-time
      * index_sequence to expand a single syntactic call to getTableElement
      * to N calls, one for each tuple element.
      *
@@ -186,14 +186,14 @@ namespace luabind::detail {
      * an initializer list to construct the return tuple in-place.
     */
     template<typename T, std::size_t... I>
-    T fromLuaTupleHelper(lua_State *aState, std::index_sequence<I...>) {
+    T getTableElementsAsTuple(lua_State *aState, std::index_sequence<I...>) {
         return {getTableElement<std::tuple_element_t<I, T>>(aState, I + 1) ...};
     }
 
     template<typename T>
     T fromLuaTuple(lua_State *aState) {
         constexpr std::size_t tuple_size = std::tuple_size_v<T>;
-        return fromLuaTupleHelper<T>(aState, std::make_index_sequence<tuple_size>());
+        return getTableElementsAsTuple<T>(aState, std::make_index_sequence<tuple_size>());
     }
 
     /*
@@ -290,7 +290,7 @@ namespace luabind::detail {
      * So we have this utility to return a tuple of type std::tuple<Args...>
      * after popping the correctly typed values off the Lua stack.
      *
-     * Note the fold expression, similar to fromLuaTupleHelper
+     * Note the fold expression, similar to getTableElementsAsTuple
      */
     template<typename ...Args>
     std::tuple<Args...> getArgsAsTuple(lua_State *aState, std::tuple<Args...>) {
