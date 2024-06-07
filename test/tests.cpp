@@ -347,6 +347,54 @@ TEST(LuaBind, TupleFromLuaFunction) {
     ASSERT_EQ(expected, actual);
 }
 
+TEST(LuaBind, CppFunctionCallsLua) {
+    luabind::Lua lua;
+    lua << R"(
+        accumulator = 0
+        accumulateLua = function()
+            accumulator = accumulator + 1
+        end
+    )";
+    lua["accumulateCpp"] = [&lua]() {
+        lua << "accumulateLua()";
+    };
+    lua << "accumulateCpp()";
+    lua << "accumulateCpp()";
+    ASSERT_EQ((int)lua["accumulator"], 2);
+}
+
+TEST(LuaBind, CanContinueAfterError) {
+    luabind::Lua lua;
+    lua << R"(
+            doError = function()
+                error("foo")
+            end
+        )";
+    auto willThrow = [&lua](){
+        lua << "doError()";
+    };
+    ASSERT_THROW(willThrow(), RuntimeError);
+
+    lua << "globalVal = 3";
+    ASSERT_EQ((int)lua["globalVal"], 3);
+}
+
+TEST(LuaBind, SyntaxError) {
+    luabind::Lua lua;
+    auto willThrow = [&lua](){ lua << "foo("; };
+    ASSERT_THROW(willThrow(), SyntaxError);
+}
+
+TEST(LuaBind, FileError) {
+    luabind::Lua lua;
+    auto willThrow = [&lua](){
+        lua << R"(
+            dofile("doesntexist")
+        )";
+    };
+    ASSERT_THROW(willThrow(), FileError);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

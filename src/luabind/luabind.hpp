@@ -24,7 +24,6 @@ namespace luabind::detail::traits {
     inline constexpr bool always_false_v = false;
 
     /*
-     * Determining if something is callable is complicated--
      * Something "callable" can be:
      * 1) A c-style function pointer
      * 2) An object with a call operator (e.g. a lambda, or struct with operator())
@@ -260,8 +259,28 @@ namespace luabind::detail {
         }
     }
 
+    struct RuntimeError : std::runtime_error {
+        RuntimeError(std::string const& aSubMsg) : std::runtime_error("Lua runtime error: " + aSubMsg) {}
+    };
+
+    struct MemoryError : std::runtime_error {
+        MemoryError(std::string const& aSubMsg) : std::runtime_error("Lua memory error: " + aSubMsg) {}
+    };
+
+    struct ErrorHandlerError : std::runtime_error {
+        ErrorHandlerError(std::string const& aSubMsg) : std::runtime_error("Lua error handler error: " + aSubMsg) {}
+    };
+
+    struct SyntaxError : std::runtime_error {
+        SyntaxError(std::string const& aSubMsg) : std::runtime_error("Lua syntax error: " + aSubMsg) {}
+    };
+
+    struct FileError : std::runtime_error {
+        FileError(std::string const& aSubMsg) : std::runtime_error("Lua file error: " + aSubMsg) {}
+    };
+
     struct IncorrectType : std::runtime_error {
-        IncorrectType() : std::runtime_error("Incorrect type") {}
+        IncorrectType(std::string const& aSubMsg) : std::runtime_error("Incorrect type: " + aSubMsg) {}
     };
     /*
      * Given an explicit template parameter T, pop the correctly
@@ -275,14 +294,14 @@ namespace luabind::detail {
     T fromLua(lua_State *aState) {
         if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
             if (!lua_isboolean(aState, -1)) {
-                throw IncorrectType();
+                throw IncorrectType("Runtime type cannot be converted to bool");
             }
             T ret = lua_toboolean(aState, -1);
             lua_pop(aState, 1);
             return ret;
         } else if constexpr (std::is_arithmetic_v<std::decay_t<T>>) {
             if (!lua_isnumber(aState, -1)) {
-                throw IncorrectType();
+                throw IncorrectType("Runtime type cannot be converted to an arithmetic type");
             }
             T ret = lua_tonumber(aState, -1);
             lua_pop(aState, 1);
@@ -290,7 +309,7 @@ namespace luabind::detail {
         } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
             if (!lua_isstring(aState, -1) || lua_isnumber(aState, -1)) {
                 // lua_isstring returns true for numbers, oddly
-                throw IncorrectType();
+                throw IncorrectType("Runtime type cannot be converted to a string");
             }
             T ret = lua_tostring(aState, -1);
             lua_pop(aState, 1);
@@ -298,7 +317,7 @@ namespace luabind::detail {
             // We don't support const char* for memory safety reasons
         } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
             if (!lua_istable(aState, -1)) {
-                throw IncorrectType();
+                throw IncorrectType("Runtime type cannot be converted to a vector");
             }
             T retVec;
             for (int i = 0; i < lua_rawlen(aState, -1); ++i) {
@@ -336,46 +355,18 @@ namespace luabind::detail {
     int adapted(lua_State *aState) {
         using retType = typename detail::traits::function_traits<Callable>::return_type;
         using argTypes = typename detail::traits::function_traits<Callable>::argument_types;
-
-        if constexpr (std::is_same_v<retType, void>) {
-            std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, argTypes()));
-            return 0;
-        } else {
-            toLua(aState, std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, argTypes())));
-            return 1;
+        try {
+            if constexpr (std::is_same_v<retType, void>) {
+                std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, argTypes()));
+                return 0;
+            } else {
+                toLua(aState, std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, argTypes())));
+                return 1;
+            }
+        } catch (std::exception& e) {
+            luaL_error(aState, e.what());
         }
     }
-
-    /*
-     * RetHelper is an RAII/casting helper to "deduce" a function's output type
-     * by deferring the deduction until a hypothetical future "cast" to another
-     * type. A RetHelper will pop off the Lua stack whenever it is casted
-     * based on the cast type.
-     *
-     * Not to be used for Lua functions without returns (since there is no returned
-     * value on the stack).
-     */
-    class RetHelper {
-    public:
-        RetHelper(lua_State *aState) : fState(aState), fWasCasted(false) {}
-
-        ~RetHelper() {
-            // If we never popped off the stack, assumptions about
-            // the stack size may be incorrect
-            assert(fWasCasted);
-        }
-
-        template<typename T>
-        operator T() {
-            assert(!fWasCasted); // We can only pop off the stack once
-            fWasCasted = true;
-            return detail::fromLua<T>(fState);
-        }
-
-    private:
-        lua_State *fState;
-        bool fWasCasted;
-    };
 }
 
 namespace luabind {
@@ -454,47 +445,107 @@ namespace luabind {
         }
 
     private:
+        /*
+         * RetHelper is an RAII/casting helper to "deduce" a function's output type
+         * by deferring the deduction until a hypothetical future "cast" to another
+         * type. A RetHelper will pop off the Lua stack whenever it is casted
+         * based on the cast type.
+         *
+         * Not to be used for Lua functions without returns (since there is no returned
+         * value on the stack).
+         */
+        class RetHelper {
+        public:
+            RetHelper(lua_State *aState) : fState(aState), fWasCasted(false) {}
+
+            ~RetHelper() {
+                // If we never popped off the stack, assumptions about
+                // the stack size may be incorrect
+                assert(fWasCasted);
+            }
+
+            template<typename T>
+            operator T() {
+                assert(!fWasCasted); // We can only pop off the stack once
+                fWasCasted = true;
+                return detail::fromLua<T>(fState);
+            }
+
+        private:
+            lua_State *fState;
+            bool fWasCasted;
+        };
+
         template<typename ...Args>
         void pushFunctionAndArgs(const std::string &aFunctionName, const Args &... args) {
             // push function on stack
             lua_getglobal(fState, aFunctionName.c_str());
-            assert(lua_isfunction(fState, -1) || lua_iscfunction(fState, -1));
+
+            if(!lua_isfunction(fState, -1) && !lua_iscfunction(fState, -1)) {
+                lua_pop(fState, 1); // We need to clean up the global we retrieved before throwing
+                throw detail::RuntimeError("Global by name " + aFunctionName + " is not a function");
+            }
             // push args on stack, in order left to right
             (detail::toLua(fState, args), ...);
+        }
+
+        void handleLuaErrCode(int aErrCode) {
+            auto stringFromErrorOnStack = [&]() -> std::string {
+                if (lua_isstring(fState, -1) ) {
+                    return lua_tostring(fState, -1);
+                }
+            };
+            switch (aErrCode) {
+                case LUA_OK:
+                    break;
+                case LUA_ERRRUN:
+                    throw detail::RuntimeError(stringFromErrorOnStack());
+                case LUA_ERRMEM:
+                    throw detail::MemoryError(stringFromErrorOnStack());
+                case LUA_ERRERR:
+                    throw detail::ErrorHandlerError(stringFromErrorOnStack());
+                case LUA_ERRSYNTAX:
+                    throw detail::SyntaxError(stringFromErrorOnStack());
+                case LUA_ERRFILE:
+                    throw detail::FileError(stringFromErrorOnStack());
+            }
         }
 
         template<typename ...Args>
         void callWithoutReturnValue(const std::string &aFunctionName, const Args &... args) {
             pushFunctionAndArgs(aFunctionName, args...);
-            lua_call(fState, sizeof...(args), 0);
+            auto errCode = lua_pcall(fState, sizeof...(args), 0, 0);
+            handleLuaErrCode(errCode);
         }
 
         template<typename ...Args>
         auto callWithReturnValue(const std::string &aFunctionName, const Args &... args) {
             pushFunctionAndArgs(aFunctionName, args...);
-            lua_call(fState, sizeof...(args), 1);
-            return detail::RetHelper(fState);
+            auto errCode = lua_pcall(fState, sizeof...(args), 1, 0);
+            handleLuaErrCode(errCode);
+            return RetHelper(fState);
         }
 
         void loadScript(const std::string &aScript) {
-            // In release builds the assert is removed, and res is unused.
-            [[maybe_unused]] auto res = luaL_dostring(fState, aScript.c_str());
-            assert(res == LUA_OK);
+            auto res = luaL_loadstring(fState, aScript.c_str());
+            handleLuaErrCode(res);
+            res = lua_pcall(fState, 0, LUA_MULTRET, 0);
+            handleLuaErrCode(res);
         }
 
         /*
-         * CallSpecialHelper waits till it is either casted or destroyed to call
+         * CallHelper waits till it is either casted or destroyed to call
          * the Lua function stored in the global of name aFunctionName. It must
          * wait until one of those events to actually call the function, because
          * popping when not necessary, or neglecting to, can leave the Lua stack
          * in a corrupted state.
          */
         template<typename ...Args>
-        struct CallSpecialHelper {
-            CallSpecialHelper(Lua &aLua, const std::string &aFunctionName, const std::tuple<Args...> &aArgs)
+        struct CallHelper {
+            CallHelper(Lua &aLua, const std::string &aFunctionName, const std::tuple<Args...> &aArgs)
                     : fLua(aLua), fFunctionName(aFunctionName), fArgs{aArgs}, fWasCasted(false) {}
 
-            ~CallSpecialHelper() {
+            ~CallHelper() {
                 // If we never called the operator T(), we should run the function with no return val
                 if (!fWasCasted) {
                     auto lam = [&](const auto &... args) { fLua.callWithoutReturnValue(args...); };
@@ -518,7 +569,7 @@ namespace luabind {
 
         template<typename ...Args>
         auto call(const std::string &aFunctionName, const Args &... args) {
-            return CallSpecialHelper{*this, aFunctionName, std::tuple{args...}};
+            return CallHelper{*this, aFunctionName, std::tuple{args...}};
         }
 
     private:

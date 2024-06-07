@@ -87,3 +87,11 @@ cmake --build .
 You can also use utilities from this library to implement a C library that can be "require"-d by a lua interpreter. See the examples/module directory for an example. The Dockerfile documents the build process and can be built with:
 ```docker build -f examples/module/Dockerfile -t luabind_module .
 ```
+
+# Error handling:
+Through the use of `lua_pcall` and try-catch in C++, errors are bubbled up between the
+C++ and Lua stacks. Lua errors are strings and get converted to runtime errors in C++
+if one occurs while calling a Lua function in C++. Likewise, if a C++ exception reaches
+the Lua interpreter, it will get converted to a Lua error using `luaL_error`. We try to
+call into Lua in a safe way so if an exception is caught in C++, the lua interpreter is
+still in a valid state and can continue operation.
