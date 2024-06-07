@@ -4,7 +4,6 @@
 #include "luabind/luabind.hpp"
 #include "gtest/gtest.h"
 
-using namespace luabind;
 using namespace luabind::detail;
 
 // Static asserts act as unittests for compile-time functionality
@@ -19,6 +18,19 @@ struct CallableStruct {
 
     static char staticMethod(int, bool) { return 'a'; }
 };
+
+struct NonCallableStruct {};
+
+static_assert(traits::is_callable_v<decltype([](int, bool){})>);
+static_assert(traits::is_callable_v<decltype([](int, bool){ return 1; })>);
+static_assert(traits::is_callable_v<void (*)(int, bool)>);
+static_assert(traits::is_callable_v<int (*)(int, bool)>);
+static_assert(traits::is_callable_v<CallableStruct>);
+static_assert(traits::is_callable_v<decltype(&CallableStruct::constMethod)>);
+static_assert(traits::is_callable_v<decltype(&CallableStruct::nonConstMethod)>);
+static_assert(traits::is_callable_v<decltype(&CallableStruct::staticMethod)>);
+static_assert(!traits::is_callable_v<int>);
+static_assert(!traits::is_callable_v<NonCallableStruct>);
 
 static_assert(std::is_same_v<traits::function_traits<decltype([](int, bool) {})>::return_type, void>);
 static_assert(std::is_same_v<traits::function_traits<decltype([](int,

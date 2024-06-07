@@ -40,6 +40,8 @@ namespace luabind::detail::traits {
      *
      * We can also use these traits to provide information about
      * argument and return types (or lack thereof).
+     *
+     * Only use function_traits on something you know is invocable
      */
     template<typename Callable>
     struct function_traits;
@@ -71,6 +73,39 @@ namespace luabind::detail::traits {
         using argument_types = typename function_traits<call_type>::argument_types;
     };
 
+    struct MightCollide {
+        void operator()();
+    };
+
+    struct WontCollide {};
+
+    template <typename T>
+    struct DetectCollision : public std::conditional_t<std::is_class_v<T>, T, WontCollide>, public MightCollide {
+    };
+
+    template <typename T>
+    constexpr bool has_call_operator = !requires () { &DetectCollision<T>::operator(); };
+
+
+    /*
+     * Determining if something is callable is a bit complicated. You can use std::is_invocable
+     * if you happen to know the types at code-authoring time, but we don't. You can detect
+     * function pointers using is_function and is_member_function_pointer, but detecting objects
+     * with call operators is tricky. Call operators might be templated and specialized for any
+     * number of input types, and they can be inherited, etc. We use a trick involving C++20 "concepts":
+     *
+     * Getting the address of the operator() for a class that has multiple implementations is a compile-time
+     * error. We can synthetically construct a class that inherits from two bases: one that we know has
+     * a call operator, and another that we are trying to detect if it has a call operator. If compilation
+     * fails, the "test" class is callable. Then, we can take advantage of "concepts" to turn that
+     * compile-time error into a constraint. Composing all of these things, we can detect all of the
+     * different kinds of invocable types without knowing the argument types in advance.
+     */
+    template <typename T>
+    constexpr bool is_callable_v = std::is_function_v<std::remove_pointer_t<T>> ||
+            std::is_member_function_pointer_v<T> ||
+            has_call_operator<T>;
+
     template<typename>
     struct is_vector : std::false_type {
     };
@@ -96,9 +131,6 @@ namespace luabind::detail::traits {
 }
 
 namespace luabind {
-    // Writing c-style function pointer types is tedious. Let's typedef this
-    typedef int (*FuncPtr)(lua_State *);
-
     /*
      * luabind::adapt is a clever function that converts a callable argument
      * to a c-style function pointer to a function that adheres to Lua's
@@ -110,7 +142,7 @@ namespace luabind {
      * compile-time information about the argument and return types of the callable object
      * to serialize and deserialize those values between C++ and Lua domains.
      *
-     * The synthetic FuncPtr-style function must maintain a long-lasting reference to the
+     * The synthetic lua_CFunction-style function must maintain a long-lasting reference to the
      * underlying callable passed to luabind::adapt. However, with a strictly defined
      * interface, said reference can't be exposed to the function through an argument.
      * The trick we use to avoid this is to create a templated global (luabind::detail::gCallable)
@@ -121,7 +153,7 @@ namespace luabind {
      * provided with, for the luabind::detail::adapted specialization to call when needed.
      */
     template<typename Callable, typename UniqueType = decltype([]() {})>
-    FuncPtr adapt(const Callable &aFunc);
+    lua_CFunction adapt(const Callable &aFunc);
 }
 
 namespace luabind::detail {
@@ -221,9 +253,10 @@ namespace luabind::detail {
             }
         } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
             toLuaTuple(aState, std::forward<T>(aVal));
-        } else {
-            // TODO: somehow check if T is a callable, and static assert for other unsupported types
+        } else if constexpr (traits::is_callable_v<std::decay_t<T>>) {
             lua_pushcfunction(aState, adapt(std::forward<T>(aVal)));
+        } else {
+            static_assert(traits::always_false_v<T>, "Unsupported type");
         }
     }
 
@@ -274,6 +307,8 @@ namespace luabind::detail {
             return retVec;
         } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
             return fromLuaTuple<std::decay_t<T>>(aState);
+        } else if constexpr (traits::is_callable_v<std::decay_t<T>>){
+            static_assert(detail::traits::always_false_v<T>, "Unable to create a function object from Lua, use the GetGlobalHelper/CallHelper instead");
         } else {
             static_assert(detail::traits::always_false_v<T>, "Unsupported type");
         }
@@ -491,7 +526,7 @@ namespace luabind {
     };
 
     template<typename Callable, typename UniqueType>
-    FuncPtr adapt(const Callable &aFunc) {
+    lua_CFunction adapt(const Callable &aFunc) {
         detail::gCallable<Callable, UniqueType>.emplace(aFunc);
         return &detail::adapted<Callable, UniqueType>;
     }
