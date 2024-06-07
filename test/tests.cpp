@@ -213,7 +213,7 @@ TEST(LuaBind, IncorrectArgumentType) {
         return x * 2;
     };
     auto willThrow = [&]() { [[maybe_unused]] int x = lua["timesTwo"](std::string("thing")); };
-    ASSERT_THROW(willThrow(), IncorrectType);
+    ASSERT_THROW(willThrow(), RuntimeError);
 }
 
 TEST(LuaBind, IncorrectReturnType) {
@@ -305,33 +305,31 @@ TEST(LuaBind, ChainedScriptsAndCFuncs) {
     ASSERT_EQ((int) lua["sumXY"](), 3);
 }
 
-TEST(LuaBind, IntVector) {
+template <typename T>
+T roundTrip(T const& aCppVal) {
     luabind::Lua lua;
+    lua["luaval"] = aCppVal;
+    return lua["luaval"];
+}
+
+TEST(LuaBind, IntVector) {
     std::vector initialVec{1, 3, 4, 5};
-    lua["newvec"] = initialVec;
-    std::vector<int> reconstructedVec = lua["newvec"];
-    ASSERT_EQ(initialVec, reconstructedVec);
+    ASSERT_EQ(initialVec, roundTrip(initialVec));
 }
 
 TEST(LuaBind, StringVector) {
-    luabind::Lua lua;
     std::vector<std::string> initialVec{"thing", "stuff"};
-    lua["newvec"] = initialVec;
-    std::vector<std::string> reconstructedVec = lua["newvec"];
-    ASSERT_EQ(initialVec, reconstructedVec);
+    ASSERT_EQ(initialVec, roundTrip(initialVec));
 }
 
 TEST(LuaBind, Tuple) {
-    luabind::Lua lua;
     // We can even have tuples containing tuples!
     using T = std::tuple<std::string,
             int,
             bool,
             std::tuple<int, bool>>;
     T initialTuple{"thing", 1, true, {4, false}};
-    lua["newtuple"] = initialTuple;
-    T reconstructedTuple = lua["newtuple"];
-    ASSERT_EQ(initialTuple, reconstructedTuple);
+    ASSERT_EQ(initialTuple, roundTrip(initialTuple));
 }
 
 TEST(LuaBind, TupleFromLuaFunction) {
