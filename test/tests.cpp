@@ -6,6 +6,12 @@
 
 #include <array>
 
+static const char *gIdentityFunction = R"(
+    identity = function(a)
+        return a
+    end
+)";
+
 TEST(LuaBind, Call) {
     luabind::Lua lua;
     lua << R"(
@@ -43,33 +49,21 @@ TEST(LuaBind, CallRBooleanArg) {
 
 TEST(LuaBind, CallRStringArg) {
     luabind::Lua lua;
-    lua << R"(
-            identity = function(a)
-                return a
-            end
-        )";
+    lua << gIdentityFunction;
     std::string x = lua["identity"](std::string("thing"));
     ASSERT_EQ(x, std::string{"thing"});
 }
 
 TEST(LuaBind, CallRCharPtrArg) {
     luabind::Lua lua;
-    lua << R"(
-            identity = function(a)
-                return a
-            end
-        )";
+    lua << gIdentityFunction;
     std::string x = lua["identity"]("thing");
     ASSERT_EQ(x, std::string{"thing"});
 }
 
 TEST(LuaBind, CallRCharArg) {
     luabind::Lua lua;
-    lua << R"(
-            identity = function(a)
-                return a
-            end
-        )";
+    lua << gIdentityFunction;
     char x = lua["identity"]('b');
     ASSERT_EQ(x, 'b');
 }
@@ -152,11 +146,7 @@ TEST(LuaBind, IncorrectArgumentType) {
 
 TEST(LuaBind, IncorrectReturnType) {
     luabind::Lua lua;
-    lua << R"(
-            identity = function(a)
-                return a
-            end
-        )";
+    lua << gIdentityFunction;
     auto willThrow = [&]() { std::string x = lua["identity"](1); };
     ASSERT_THROW(willThrow(), luabind::IncorrectType);
 }
