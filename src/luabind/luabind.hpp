@@ -12,7 +12,7 @@
 #include <cassert>
 #include <string>
 #include <format>
-
+#include <array>
 
 namespace luabind::detail::traits {
     /*
@@ -128,6 +128,75 @@ namespace luabind::detail::traits {
 
     template<typename T>
     constexpr bool is_tuple_v = is_tuple<T>::value;
+}
+
+
+namespace luabind::meta {
+    static inline constexpr size_t MAX_FIELD_SIZE = 64;
+
+    struct discriminator_container {
+        std::array<char, MAX_FIELD_SIZE> D{};
+
+        constexpr bool operator==(discriminator_container const& aOther) const {
+            for (int i = 0; i < D.max_size(); ++i) {
+                if (D[i] != aOther.D[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    };
+
+    template <discriminator_container Discriminator, typename Type>
+    struct meta_field {
+        using T = Type;
+        T value;
+        static inline constexpr discriminator_container D = Discriminator;
+
+        template <discriminator_container TestDiscriminator>
+        static constexpr bool hasName() {
+            return TestDiscriminator == D;
+        }
+    };
+
+    template <typename Fields, discriminator_container TestDiscriminator, size_t ...I>
+    constexpr size_t getIndexMatchingName(std::index_sequence<I...>) {
+        std::array<bool, std::tuple_size_v<Fields>> isEqual{std::tuple_element_t<I, Fields>::template hasName<TestDiscriminator>() ...};
+        auto found = std::find(isEqual.cbegin(), isEqual.cend(), true);
+        return found - isEqual.cbegin();
+    }
+
+    template <typename ...MetaFields>
+    struct meta_struct {
+        using Fields = std::tuple<MetaFields...>;
+        Fields fFields;
+
+        template <typename ...T>
+        meta_struct(MetaFields ...aFields) : fFields{aFields...} {}
+
+        template <discriminator_container Discriminator>
+        auto& get() {
+            constexpr size_t idx = getIndexMatchingName<Fields, Discriminator>(std::make_index_sequence<std::tuple_size_v<Fields>>());
+            static_assert(idx < std::tuple_size_v<Fields>, "Field not found");
+            return std::get<idx>(fFields).value;
+        }
+
+        template <discriminator_container Discriminator, typename T>
+        void set(T aValue) {
+            get<Discriminator>() = aValue;
+        }
+    };
+
+    namespace literals {
+        constexpr discriminator_container operator""_f(const char *aStr, const unsigned int aSize) {
+            discriminator_container res{};
+            for (int i = 0; i < aSize; ++i) {
+                assert(aSize < MAX_FIELD_SIZE); // Becomes a compile-time error if provided field name is too long
+                res.D[i] = aStr[i];
+            }
+            return res;
+        }
+    }
 }
 
 namespace luabind {

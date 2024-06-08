@@ -311,3 +311,23 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+
+TEST(LuaBind, MetaStruct) {
+    using namespace luabind::meta::literals;
+
+    luabind::meta::meta_struct<
+            luabind::meta::meta_field<"biz"_f, int>,
+            luabind::meta::meta_field<"buz"_f, bool>> bar{{1}, {false}};
+
+    auto x = bar.get<"biz"_f>();
+    auto y = bar.get<"buz"_f>();
+
+    ASSERT_EQ(x, 1);
+    ASSERT_EQ(y, false);
+
+    bar.set<"buz"_f>(true);
+    ASSERT_EQ(bar.get<"buz"_f>(), true);
+
+    bar.set<"biz"_f>(10);
+    ASSERT_EQ(bar.get<"biz"_f>(), 10);
+}
