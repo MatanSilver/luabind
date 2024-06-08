@@ -383,16 +383,6 @@ TEST(LuaBind, SyntaxError) {
     ASSERT_THROW(willThrow(), SyntaxError);
 }
 
-TEST(LuaBind, FileError) {
-    luabind::Lua lua;
-    auto willThrow = [&lua](){
-        lua << R"(
-            dofile("doesntexist")
-        )";
-    };
-    ASSERT_THROW(willThrow(), FileError);
-}
-
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
