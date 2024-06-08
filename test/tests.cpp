@@ -4,73 +4,7 @@
 #include "luabind/luabind.hpp"
 #include "gtest/gtest.h"
 
-using namespace luabind::detail;
-
-// Static asserts act as unittests for compile-time functionality
-static_assert(!traits::always_false_v<int>);
-
-struct CallableStruct {
-    char operator()(int, bool) { return 'a'; }
-
-    char nonConstMethod(int, bool) { return 'a'; }
-
-    char constMethod(int, bool) const { return 'a'; }
-
-    static char staticMethod(int, bool) { return 'a'; }
-};
-
-struct NonCallableStruct {};
-
-static_assert(traits::is_callable_v<decltype([](int, bool){})>);
-static_assert(traits::is_callable_v<decltype([](int, bool){ return 1; })>);
-static_assert(traits::is_callable_v<void (*)(int, bool)>);
-static_assert(traits::is_callable_v<int (*)(int, bool)>);
-static_assert(traits::is_callable_v<CallableStruct>);
-static_assert(traits::is_callable_v<decltype(&CallableStruct::constMethod)>);
-static_assert(traits::is_callable_v<decltype(&CallableStruct::nonConstMethod)>);
-static_assert(traits::is_callable_v<decltype(&CallableStruct::staticMethod)>);
-static_assert(!traits::is_callable_v<int>);
-static_assert(!traits::is_callable_v<NonCallableStruct>);
-
-static_assert(std::is_same_v<traits::function_traits<decltype([](int, bool) {})>::return_type, void>);
-static_assert(std::is_same_v<traits::function_traits<decltype([](int,
-                                                                 bool) { return 1; })>::return_type, int>);
-static_assert(std::is_same_v<traits::function_traits<decltype([](int,
-                                                                 bool) { return 1; })>::argument_types, std::tuple<int, bool>>);
-
-static_assert(std::is_same_v<traits::function_traits<void (*)(int, bool)>::return_type, void>);
-static_assert(std::is_same_v<traits::function_traits<int (*)(int, bool)>::return_type, int>);
-static_assert(std::is_same_v<traits::function_traits<int (*)(int,
-                                                             bool)>::argument_types, std::tuple<int, bool>>);
-
-static_assert(std::is_same_v<traits::function_traits<CallableStruct>::return_type, char>);
-static_assert(
-        std::is_same_v<traits::function_traits<decltype(&CallableStruct::constMethod)>::return_type, char>);
-static_assert(
-        std::is_same_v<traits::function_traits<decltype(&CallableStruct::nonConstMethod)>::return_type, char>);
-static_assert(
-        std::is_same_v<traits::function_traits<decltype(&CallableStruct::staticMethod)>::return_type, char>);
-static_assert(
-        std::is_same_v<traits::function_traits<decltype(&CallableStruct::constMethod)>::argument_types, std::tuple<int, bool>>);
-static_assert(
-        std::is_same_v<traits::function_traits<decltype(&CallableStruct::nonConstMethod)>::argument_types, std::tuple<int, bool>>);
-static_assert(
-        std::is_same_v<traits::function_traits<decltype(&CallableStruct::staticMethod)>::argument_types, std::tuple<int, bool>>);
-
-static_assert(traits::is_vector_v<std::vector<int>>);
-static_assert(traits::is_vector_v<std::vector<std::string>>);
-static_assert(traits::is_vector_v<std::vector<std::vector<int>>>);
-static_assert(!traits::is_vector_v<int>);
-static_assert(!traits::is_vector_v<std::string>);
-static_assert(!traits::is_vector_v<void>);
-
-static_assert(traits::is_tuple_v<std::tuple<int>>);
-static_assert(traits::is_tuple_v<std::tuple<int, bool>>);
-static_assert(traits::is_tuple_v<std::tuple<std::string>>);
-static_assert(traits::is_tuple_v<std::tuple<std::vector<int>>>);
-static_assert(!traits::is_tuple_v<std::vector<std::tuple<>>>);
-static_assert(!traits::is_tuple_v<std::string>);
-static_assert(!traits::is_tuple_v<void>);
+#include <array>
 
 TEST(LuaBind, Call) {
     luabind::Lua lua;
@@ -213,7 +147,7 @@ TEST(LuaBind, IncorrectArgumentType) {
         return x * 2;
     };
     auto willThrow = [&]() { [[maybe_unused]] int x = lua["timesTwo"](std::string("thing")); };
-    ASSERT_THROW(willThrow(), RuntimeError);
+    ASSERT_THROW(willThrow(), luabind::RuntimeError);
 }
 
 TEST(LuaBind, IncorrectReturnType) {
@@ -224,7 +158,7 @@ TEST(LuaBind, IncorrectReturnType) {
             end
         )";
     auto willThrow = [&]() { std::string x = lua["identity"](1); };
-    ASSERT_THROW(willThrow(), IncorrectType);
+    ASSERT_THROW(willThrow(), luabind::IncorrectType);
 }
 
 TEST(LuaBind, IncorrectTypeBool) {
@@ -233,7 +167,7 @@ TEST(LuaBind, IncorrectTypeBool) {
         isNotBool = "thing"
     )";
     auto willThrow = [&]() { bool x = lua["isNotBool"]; };
-    ASSERT_THROW(willThrow(), IncorrectType);
+    ASSERT_THROW(willThrow(), luabind::IncorrectType);
 }
 
 TEST(LuaBind, IncorrectTypeVector) {
@@ -242,7 +176,7 @@ TEST(LuaBind, IncorrectTypeVector) {
         isNotVector = "thing"
     )";
     auto willThrow = [&]() { std::vector<int> x = lua["isNotVector"]; };
-    ASSERT_THROW(willThrow(), IncorrectType);
+    ASSERT_THROW(willThrow(), luabind::IncorrectType);
 }
 
 TEST(LuaBind, GetGlobalValue) {
@@ -371,7 +305,7 @@ TEST(LuaBind, CanContinueAfterError) {
     auto willThrow = [&lua](){
         lua << "doError()";
     };
-    ASSERT_THROW(willThrow(), RuntimeError);
+    ASSERT_THROW(willThrow(), luabind::RuntimeError);
 
     lua << "globalVal = 3";
     ASSERT_EQ((int)lua["globalVal"], 3);
@@ -380,7 +314,7 @@ TEST(LuaBind, CanContinueAfterError) {
 TEST(LuaBind, SyntaxError) {
     luabind::Lua lua;
     auto willThrow = [&lua](){ lua << "foo("; };
-    ASSERT_THROW(willThrow(), SyntaxError);
+    ASSERT_THROW(willThrow(), luabind::SyntaxError);
 }
 
 int main(int argc, char **argv) {

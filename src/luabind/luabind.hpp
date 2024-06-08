@@ -154,6 +154,31 @@ namespace luabind {
      */
     template<typename Callable, typename UniqueType = decltype([]() {})>
     lua_CFunction adapt(const Callable &aFunc);
+
+
+    struct RuntimeError : std::runtime_error {
+        explicit RuntimeError(std::string const& aSubMsg) : std::runtime_error("Lua runtime error: " + aSubMsg) {}
+    };
+
+    struct MemoryError : std::runtime_error {
+        explicit MemoryError(std::string const& aSubMsg) : std::runtime_error("Lua memory error: " + aSubMsg) {}
+    };
+
+    struct ErrorHandlerError : std::runtime_error {
+        explicit ErrorHandlerError(std::string const& aSubMsg) : std::runtime_error("Lua error handler error: " + aSubMsg) {}
+    };
+
+    struct SyntaxError : std::runtime_error {
+        explicit SyntaxError(std::string const& aSubMsg) : std::runtime_error("Lua syntax error: " + aSubMsg) {}
+    };
+
+    struct FileError : std::runtime_error {
+        explicit FileError(std::string const& aSubMsg) : std::runtime_error("Lua file error: " + aSubMsg) {}
+    };
+
+    struct IncorrectType : std::runtime_error {
+        explicit IncorrectType(std::string const& aSubMsg) : std::runtime_error("Incorrect type: " + aSubMsg) {}
+    };
 }
 
 namespace luabind::detail {
@@ -260,29 +285,6 @@ namespace luabind::detail {
         }
     }
 
-    struct RuntimeError : std::runtime_error {
-        explicit RuntimeError(std::string const& aSubMsg) : std::runtime_error("Lua runtime error: " + aSubMsg) {}
-    };
-
-    struct MemoryError : std::runtime_error {
-        explicit MemoryError(std::string const& aSubMsg) : std::runtime_error("Lua memory error: " + aSubMsg) {}
-    };
-
-    struct ErrorHandlerError : std::runtime_error {
-        explicit ErrorHandlerError(std::string const& aSubMsg) : std::runtime_error("Lua error handler error: " + aSubMsg) {}
-    };
-
-    struct SyntaxError : std::runtime_error {
-        explicit SyntaxError(std::string const& aSubMsg) : std::runtime_error("Lua syntax error: " + aSubMsg) {}
-    };
-
-    struct FileError : std::runtime_error {
-        explicit FileError(std::string const& aSubMsg) : std::runtime_error("Lua file error: " + aSubMsg) {}
-    };
-
-    struct IncorrectType : std::runtime_error {
-        explicit IncorrectType(std::string const& aSubMsg) : std::runtime_error("Incorrect type: " + aSubMsg) {}
-    };
     /*
      * Given an explicit template parameter T, pop the correctly
      * typed value from the Lua stack and return it into the C++ domain.
@@ -485,7 +487,7 @@ namespace luabind {
             if(!lua_isfunction(fState, -1) && !lua_iscfunction(fState, -1)) {
                 lua_pop(fState, 1); // We need to clean up the global we retrieved before throwing
 
-                throw detail::RuntimeError(std::format("Global by name {} is not a function", aFunctionName));
+                throw RuntimeError(std::format("Global by name {} is not a function", aFunctionName));
             }
             // push args on stack, in order left to right
             (detail::toLua(fState, args), ...);
@@ -499,17 +501,17 @@ namespace luabind {
                 case LUA_OK:
                     break;
                 case LUA_ERRRUN:
-                    throw detail::RuntimeError(stringFromErrorOnStack());
+                    throw RuntimeError(stringFromErrorOnStack());
                 case LUA_ERRMEM:
-                    throw detail::MemoryError(stringFromErrorOnStack());
+                    throw MemoryError(stringFromErrorOnStack());
                 case LUA_ERRERR:
-                    throw detail::ErrorHandlerError(stringFromErrorOnStack());
+                    throw ErrorHandlerError(stringFromErrorOnStack());
                 case LUA_ERRSYNTAX:
-                    throw detail::SyntaxError(stringFromErrorOnStack());
+                    throw SyntaxError(stringFromErrorOnStack());
                 case LUA_ERRFILE:
-                    throw detail::FileError(stringFromErrorOnStack());
+                    throw FileError(stringFromErrorOnStack());
                 default:
-                    throw detail::RuntimeError(std::format("Unknown error code: {}", aErrCode));
+                    throw RuntimeError(std::format("Unknown error code: {}", aErrCode));
             }
         }
 

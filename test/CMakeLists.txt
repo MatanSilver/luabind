@@ -10,6 +10,6 @@ find_package(Lua REQUIRED)
 
 add_subdirectory(../ luabind_binary_dir)
 
-add_executable(tests tests.cpp)
+add_executable(tests tests.cpp compile_time_tests.cpp)
 target_link_libraries(tests PRIVATE luabind ${LUA_LIBRARIES} GTest::gtest GTest::gtest_main)
 target_include_directories(tests PRIVATE ${LUA_INCLUDE_DIR})
