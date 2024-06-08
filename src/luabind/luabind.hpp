@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <cassert>
 #include <string>
+#include <format>
 
 
 namespace luabind::detail::traits {
@@ -73,7 +74,7 @@ namespace luabind::detail::traits {
     };
 
     struct MightCollide {
-        void operator()();
+        void operator()() {}
     };
 
     struct WontCollide {};
@@ -134,10 +135,10 @@ namespace luabind {
      * luabind::adapt is a clever function that converts a callable argument
      * to a c-style function pointer to a function that adheres to Lua's
      * requirements of taking in a lua_State* and returning an int. The way we do
-     * this is by creating a new specialization of a global variable /for every callsite/
+     * this is by creating a new specialization of a global variable /for every call site/
      * of luabind::adapt, and storing a reference to the callable in that specialized global
      * variable. The actual implementation of the pointed-to function is a specialization of
-     * luabind::detail::adapted associated with the luabind::adapt callsite, which uses
+     * luabind::detail::adapted associated with the luabind::adapt call site, which uses
      * compile-time information about the argument and return types of the callable object
      * to serialize and deserialize those values between C++ and Lua domains.
      *
@@ -260,27 +261,27 @@ namespace luabind::detail {
     }
 
     struct RuntimeError : std::runtime_error {
-        RuntimeError(std::string const& aSubMsg) : std::runtime_error("Lua runtime error: " + aSubMsg) {}
+        explicit RuntimeError(std::string const& aSubMsg) : std::runtime_error("Lua runtime error: " + aSubMsg) {}
     };
 
     struct MemoryError : std::runtime_error {
-        MemoryError(std::string const& aSubMsg) : std::runtime_error("Lua memory error: " + aSubMsg) {}
+        explicit MemoryError(std::string const& aSubMsg) : std::runtime_error("Lua memory error: " + aSubMsg) {}
     };
 
     struct ErrorHandlerError : std::runtime_error {
-        ErrorHandlerError(std::string const& aSubMsg) : std::runtime_error("Lua error handler error: " + aSubMsg) {}
+        explicit ErrorHandlerError(std::string const& aSubMsg) : std::runtime_error("Lua error handler error: " + aSubMsg) {}
     };
 
     struct SyntaxError : std::runtime_error {
-        SyntaxError(std::string const& aSubMsg) : std::runtime_error("Lua syntax error: " + aSubMsg) {}
+        explicit SyntaxError(std::string const& aSubMsg) : std::runtime_error("Lua syntax error: " + aSubMsg) {}
     };
 
     struct FileError : std::runtime_error {
-        FileError(std::string const& aSubMsg) : std::runtime_error("Lua file error: " + aSubMsg) {}
+        explicit FileError(std::string const& aSubMsg) : std::runtime_error("Lua file error: " + aSubMsg) {}
     };
 
     struct IncorrectType : std::runtime_error {
-        IncorrectType(std::string const& aSubMsg) : std::runtime_error("Incorrect type: " + aSubMsg) {}
+        explicit IncorrectType(std::string const& aSubMsg) : std::runtime_error("Incorrect type: " + aSubMsg) {}
     };
     /*
      * Given an explicit template parameter T, pop the correctly
@@ -383,7 +384,7 @@ namespace luabind {
             luaL_openlibs(fState);
         }
 
-        Lua(lua_State *aState) : fState(aState) {}
+        explicit Lua(lua_State *aState) : fState(aState) {}
 
         ~Lua() {
             lua_close(fState);
@@ -392,7 +393,7 @@ namespace luabind {
         /*
          * Syntactic sugar for running interpreted Lua code
          */
-        Lua &operator<<(const std::string &aCodeToRun) {
+        Lua &operator<<(const std::string_view aCodeToRun) {
             loadScript(aCodeToRun);
             return *this;
         }
@@ -411,7 +412,7 @@ namespace luabind {
          * interface for storing and referencing Lua symbols from C++.
          */
         struct GetGlobalHelper {
-            GetGlobalHelper(const std::string &aGlobalName, Lua &aLua)
+            GetGlobalHelper(const std::string_view aGlobalName, Lua &aLua)
                     : fGlobalName(aGlobalName), fLua(aLua) {}
 
             template<typename ...Args>
@@ -421,26 +422,26 @@ namespace luabind {
 
             template<typename T>
             operator T() {
-                lua_getglobal(fLua.fState, fGlobalName.c_str());
+                lua_getglobal(fLua.fState, fGlobalName.data());
                 return detail::fromLua<T>(fLua.fState);
             }
 
             template<typename T>
-            Lua &operator=(T &&aVal) {
+            Lua& operator=(T &&aVal) {
                 detail::toLua(fLua.fState, std::forward<T>(aVal));
-                lua_setglobal(fLua.fState, fGlobalName.c_str());
+                lua_setglobal(fLua.fState, fGlobalName.data());
                 return fLua;
             }
 
         private:
-            const std::string fGlobalName;
+            const std::string_view fGlobalName;
             Lua &fLua;
         };
 
         /*
          * Gets the global of the name aGlobalName
          */
-        auto operator[](const std::string &aGlobalName) {
+        auto operator[](const std::string_view aGlobalName) {
             return GetGlobalHelper{aGlobalName, *this};
         }
 
@@ -456,7 +457,7 @@ namespace luabind {
          */
         class RetHelper {
         public:
-            RetHelper(lua_State *aState) : fState(aState), fWasCasted(false) {}
+            explicit RetHelper(lua_State *aState) : fState(aState), fWasCasted(false) {}
 
             ~RetHelper() {
                 // If we never popped off the stack, assumptions about
@@ -477,13 +478,14 @@ namespace luabind {
         };
 
         template<typename ...Args>
-        void pushFunctionAndArgs(const std::string &aFunctionName, const Args &... args) {
+        void pushFunctionAndArgs(const std::string_view aFunctionName, const Args &... args) {
             // push function on stack
-            lua_getglobal(fState, aFunctionName.c_str());
+            lua_getglobal(fState, aFunctionName.data());
 
             if(!lua_isfunction(fState, -1) && !lua_iscfunction(fState, -1)) {
                 lua_pop(fState, 1); // We need to clean up the global we retrieved before throwing
-                throw detail::RuntimeError("Global by name " + aFunctionName + " is not a function");
+
+                throw detail::RuntimeError(std::format("Global by name {} is not a function", aFunctionName));
             }
             // push args on stack, in order left to right
             (detail::toLua(fState, args), ...);
@@ -506,26 +508,28 @@ namespace luabind {
                     throw detail::SyntaxError(stringFromErrorOnStack());
                 case LUA_ERRFILE:
                     throw detail::FileError(stringFromErrorOnStack());
+                default:
+                    throw detail::RuntimeError(std::format("Unknown error code: {}", aErrCode));
             }
         }
 
         template<typename ...Args>
-        void callWithoutReturnValue(const std::string &aFunctionName, const Args &... args) {
+        void callWithoutReturnValue(const std::string_view aFunctionName, const Args &... args) {
             pushFunctionAndArgs(aFunctionName, args...);
             auto errCode = lua_pcall(fState, sizeof...(args), 0, 0);
             handleLuaErrCode(errCode);
         }
 
         template<typename ...Args>
-        auto callWithReturnValue(const std::string &aFunctionName, const Args &... args) {
+        auto callWithReturnValue(const std::string_view aFunctionName, const Args &... args) {
             pushFunctionAndArgs(aFunctionName, args...);
             auto errCode = lua_pcall(fState, sizeof...(args), 1, 0);
             handleLuaErrCode(errCode);
             return RetHelper(fState);
         }
 
-        void loadScript(const std::string &aScript) {
-            auto res = luaL_loadstring(fState, aScript.c_str());
+        void loadScript(const std::string_view aScript) {
+            auto res = luaL_loadstring(fState, aScript.data());
             handleLuaErrCode(res);
             res = lua_pcall(fState, 0, LUA_MULTRET, 0);
             handleLuaErrCode(res);
@@ -540,7 +544,7 @@ namespace luabind {
          */
         template<typename ...Args>
         struct CallHelper {
-            CallHelper(Lua &aLua, const std::string &aFunctionName, const std::tuple<Args...> &aArgs)
+            CallHelper(Lua &aLua, const std::string_view aFunctionName, const std::tuple<Args...> &aArgs)
                     : fLua(aLua), fFunctionName(aFunctionName), fArgs{aArgs}, fWasCasted(false) {}
 
             ~CallHelper() {
@@ -560,13 +564,13 @@ namespace luabind {
 
         private:
             Lua &fLua;
-            const std::string fFunctionName;
+            const std::string_view fFunctionName;
             const std::tuple<Args...> fArgs;
             bool fWasCasted;
         };
 
         template<typename ...Args>
-        auto call(const std::string &aFunctionName, const Args &... args) {
+        auto call(const std::string_view aFunctionName, const Args &... args) {
             return CallHelper{*this, aFunctionName, std::tuple{args...}};
         }
 
