@@ -491,9 +491,7 @@ namespace luabind {
 
         void handleLuaErrCode(int aErrCode) {
             auto stringFromErrorOnStack = [&]() -> std::string {
-                if (lua_isstring(fState, -1) ) {
-                    return lua_tostring(fState, -1);
-                }
+                return detail::fromLua<std::string>(fState);
             };
             switch (aErrCode) {
                 case LUA_OK:
