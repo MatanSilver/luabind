@@ -371,7 +371,7 @@ namespace luabind::detail {
     }
 
     template <typename T>
-    T fromLuaTable(lua_State *aState) {
+    T fromLuaMetaStruct(lua_State *aState) {
         static_assert(traits::is_meta_struct_v<T>);
 
         // For each field according to the index_sequence, deserialize that element by indexing into the lua tuple
@@ -380,7 +380,7 @@ namespace luabind::detail {
     }
 
     template<typename T>
-    void toLuaTable(lua_State *aState, const T &aVal) {
+    void toLuaMetaStruct(lua_State *aState, const T &aVal) {
         static_assert(traits::is_meta_struct_v<T>);
 
         // For each field according to the index_sequence, serialize that element by calling toLua based on
@@ -417,7 +417,7 @@ namespace luabind::detail {
         } else if constexpr (traits::is_callable_v<std::decay_t<T>>) {
             lua_pushcfunction(aState, adapt(std::forward<T>(aVal)));
         } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
-            toLuaTable(aState, std::forward<T>(aVal));
+            toLuaMetaStruct(aState, std::forward<T>(aVal));
         } else {
             static_assert(traits::always_false_v<T>, "Unsupported type");
         }
@@ -473,7 +473,7 @@ namespace luabind::detail {
         } else if constexpr (traits::is_callable_v<std::decay_t<T>>){
             static_assert(detail::traits::always_false_v<T>, "Unable to create a function object from Lua, use the GetGlobalHelper/CallHelper instead");
         } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
-            auto newTable = fromLuaTable<std::decay_t<T>>(aState);
+            auto newTable = fromLuaMetaStruct<std::decay_t<T>>(aState);
             lua_pop(aState, 1);
             return newTable;
         } else {
