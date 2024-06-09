@@ -314,10 +314,11 @@ int main(int argc, char **argv) {
 
 TEST(LuaBind, MetaStruct) {
     using namespace luabind::meta::literals;
+    using namespace luabind::meta;
 
-    luabind::meta::meta_struct<
-            luabind::meta::meta_field<"biz"_f, int>,
-            luabind::meta::meta_field<"buz"_f, bool>> bar{{1}, {false}};
+    meta_struct<
+            meta_field<"biz"_f, int>,
+            meta_field<"buz"_f, bool>> bar{{1}, {false}};
 
     auto x = bar.get<"biz"_f>();
     auto y = bar.get<"buz"_f>();
@@ -330,4 +331,37 @@ TEST(LuaBind, MetaStruct) {
 
     bar.set<"biz"_f>(10);
     ASSERT_EQ(bar.get<"biz"_f>(), 10);
+}
+
+TEST(LuaBind, MetaStructSerDe) {
+    using namespace luabind::meta::literals;
+    using namespace luabind::meta;
+
+    meta_struct<
+            meta_field<"biz"_f, int>,
+            meta_field<"buz"_f, bool>> bar{{1}, {false}};
+
+    ASSERT_TRUE(bar == roundTrip(bar));
+}
+
+TEST(LuaBind, MetaStructIsReadable) {
+    using namespace luabind::meta::literals;
+    using namespace luabind::meta;
+
+    meta_struct<
+            meta_field<"biz"_f, int>,
+            meta_field<"buz"_f, bool>> bar{{1}, {false}};
+
+    luabind::Lua lua;
+
+    lua << R"(
+        transform = function(inTable)
+            return {foo=inTable.biz, far=inTable.buz}
+        end
+    )";
+    lua["globalStruct"] = bar;
+    meta_struct<
+            meta_field<"foo"_f, int>,
+            meta_field<"far"_f, bool>> expected{{1}, {false}};
+    ASSERT_TRUE(expected == lua["transform"](bar));
 }

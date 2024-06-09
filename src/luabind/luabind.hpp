@@ -157,6 +157,11 @@ namespace luabind::meta {
         static constexpr bool hasName() {
             return TestDiscriminator == D;
         }
+
+        template <discriminator_container OtherDiscriminator, typename OtherType>
+        bool operator==(meta_field<OtherDiscriminator, OtherType> const& aOther) const {
+            return (D == OtherDiscriminator) && std::is_same_v<T, OtherType> &&(value == aOther.value);
+        }
     };
 
     template <typename Fields, discriminator_container TestDiscriminator, size_t ...I>
@@ -171,8 +176,9 @@ namespace luabind::meta {
         using Fields = std::tuple<MetaFields...>;
         Fields fFields;
 
-        template <typename ...T>
         meta_struct(MetaFields ...aFields) : fFields{aFields...} {}
+
+        meta_struct(meta_struct<MetaFields...> const& aOther) : fFields{aOther.fFields} {};
 
         template <discriminator_container Discriminator>
         auto& get() {
@@ -184,6 +190,10 @@ namespace luabind::meta {
         template <discriminator_container Discriminator, typename T>
         void set(T aValue) {
             get<Discriminator>() = aValue;
+        }
+
+        bool operator==(meta_struct<MetaFields...> const& aOther) const {
+            return fFields == aOther.fFields;
         }
     };
 
@@ -197,6 +207,17 @@ namespace luabind::meta {
             return res;
         }
     }
+}
+
+namespace luabind::detail::traits {
+    template <typename>
+    struct is_meta_struct : std::false_type {};
+
+    template <typename ...Args>
+    struct is_meta_struct<meta::meta_struct<Args...>> : std::true_type {};
+
+    template <typename T>
+    constexpr bool is_meta_struct_v = is_meta_struct<T>::value;
 }
 
 namespace luabind {
@@ -273,9 +294,9 @@ namespace luabind::detail {
     T fromLua(lua_State *aState);
 
     template<typename T>
-    void setTableElement(lua_State *aState, const T &aVal, int i) {
+    void setTableElement(lua_State *aState, T&& aVal, int i) {
         // First push the Lua-domain converted aVal onto the stack
-        toLua(aState, aVal);
+        toLua(aState, std::forward<T>(aVal));
 
         // idx -1 on the stack is the converted aVal, -2 is the table
         lua_seti(aState, -2, i);
@@ -284,6 +305,21 @@ namespace luabind::detail {
     template<typename T>
     T getTableElement(lua_State *aState, int i) {
         lua_geti(aState, -1, i);
+        return fromLua<T>(aState);
+    }
+
+    template<typename T>
+    void setTableField(lua_State *aState, T&& aVal, const char *aFieldName) {
+        // First push the Lua-domain converted aVal onto the stack
+        toLua(aState, std::forward<T>(aVal));
+
+        // idx -1 on the stack is the converted aVal, -2 is the table
+        lua_setfield(aState, -2, aFieldName);
+    }
+
+    template<typename T>
+    T getTableField(lua_State *aState, const char* aFieldName) {
+        lua_getfield(aState, -1, aFieldName);
         return fromLua<T>(aState);
     }
 
@@ -319,7 +355,42 @@ namespace luabind::detail {
     template<typename T>
     T fromLuaTuple(lua_State *aState) {
         constexpr std::size_t tuple_size = std::tuple_size_v<T>;
-        return getTableElementsAsTuple<T>(aState, std::make_index_sequence<tuple_size>());
+        auto tuple = getTableElementsAsTuple<T>(aState, std::make_index_sequence<tuple_size>());
+        lua_pop(aState, 1);
+        return tuple;
+    }
+
+    template <typename T, size_t ...I>
+    T getTableElementsAsMetaStruct(lua_State *aState, std::index_sequence<I...>) {
+        return {{getTableField<typename std::tuple_element_t<I, typename T::Fields>::T>(aState, std::tuple_element_t<I, typename T::Fields>::D.D.data())}...};
+    }
+
+    template <typename T, typename ...Args, size_t ...I>
+    void setTableElementsAsMetaStruct(lua_State *aState, const T& aMetaStruct, std::index_sequence<I...>) {
+        (
+            setTableField(aState, std::get<I>(aMetaStruct.fFields).value, std::tuple_element_t<I, typename T::Fields>::D.D.data())
+    ,...);
+    }
+
+    template <typename T>
+    T fromLuaTable(lua_State *aState) {
+        static_assert(traits::is_meta_struct_v<T>);
+
+        // For each field according to the index_sequence, deserialize that element by indexing into the lua tuple
+        // using the field name, and calling fromLua using the field type
+        auto metaStruct = getTableElementsAsMetaStruct<T>(aState, std::make_index_sequence<std::tuple_size_v<typename T::Fields>>());
+        lua_pop(aState, 1);
+        return metaStruct;
+    }
+
+    template<typename T>
+    void toLuaTable(lua_State *aState, const T &aVal) {
+        static_assert(traits::is_meta_struct_v<T>);
+
+        // For each field according to the index_sequence, serialize that element by calling toLua based on
+        // the field type
+        lua_createtable(aState, std::tuple_size_v<std::decay_t<typename T::Fields>>, 0);
+        setTableElementsAsMetaStruct(aState, aVal, std::make_index_sequence<std::tuple_size_v<typename T::Fields>>());
     }
 
     /*
@@ -349,6 +420,8 @@ namespace luabind::detail {
             toLuaTuple(aState, std::forward<T>(aVal));
         } else if constexpr (traits::is_callable_v<std::decay_t<T>>) {
             lua_pushcfunction(aState, adapt(std::forward<T>(aVal)));
+        } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
+            toLuaTable(aState, std::forward<T>(aVal));
         } else {
             static_assert(traits::always_false_v<T>, "Unsupported type");
         }
@@ -395,11 +468,14 @@ namespace luabind::detail {
             for (int i = 0; i < lua_rawlen(aState, -1); ++i) {
                 retVec.emplace_back(getTableElement<typename T::value_type>(aState, i + 1));
             }
+            lua_pop(aState, 1);
             return retVec;
         } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
             return fromLuaTuple<std::decay_t<T>>(aState);
         } else if constexpr (traits::is_callable_v<std::decay_t<T>>){
             static_assert(detail::traits::always_false_v<T>, "Unable to create a function object from Lua, use the GetGlobalHelper/CallHelper instead");
+        } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
+            return fromLuaTable<std::decay_t<T>>(aState);
         } else {
             static_assert(detail::traits::always_false_v<T>, "Unsupported type");
         }

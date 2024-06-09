@@ -5,6 +5,8 @@
 #include "luabind/luabind.hpp"
 
 using namespace luabind::detail;
+using namespace luabind::meta;
+using namespace luabind::meta::literals;
 
 // Static asserts act as unittests for compile-time functionality
 static_assert(!traits::always_false_v<int>);
@@ -71,3 +73,9 @@ static_assert(traits::is_tuple_v<std::tuple<std::vector<int>>>);
 static_assert(!traits::is_tuple_v<std::vector<std::tuple<>>>);
 static_assert(!traits::is_tuple_v<std::string>);
 static_assert(!traits::is_tuple_v<void>);
+
+static_assert(traits::is_meta_struct_v<meta_struct<>>);
+static_assert(traits::is_meta_struct_v<meta_struct<meta_field<"name"_f, int>>>);
+static_assert(traits::is_meta_struct_v<meta_struct<meta_field<"name1"_f, int>, meta_field<"name2"_f, std::string>>>);
+static_assert(!traits::is_meta_struct_v<int>);
+static_assert(!traits::is_meta_struct_v<std::string>);
