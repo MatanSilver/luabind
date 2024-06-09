@@ -355,9 +355,7 @@ namespace luabind::detail {
     template<typename T>
     T fromLuaTuple(lua_State *aState) {
         constexpr std::size_t tuple_size = std::tuple_size_v<T>;
-        auto tuple = getTableElementsAsTuple<T>(aState, std::make_index_sequence<tuple_size>());
-        lua_pop(aState, 1);
-        return tuple;
+        return getTableElementsAsTuple<T>(aState, std::make_index_sequence<tuple_size>());
     }
 
     template <typename T, size_t ...I>
@@ -378,9 +376,7 @@ namespace luabind::detail {
 
         // For each field according to the index_sequence, deserialize that element by indexing into the lua tuple
         // using the field name, and calling fromLua using the field type
-        auto metaStruct = getTableElementsAsMetaStruct<T>(aState, std::make_index_sequence<std::tuple_size_v<typename T::Fields>>());
-        lua_pop(aState, 1);
-        return metaStruct;
+        return getTableElementsAsMetaStruct<T>(aState, std::make_index_sequence<std::tuple_size_v<typename T::Fields>>());
     }
 
     template<typename T>
@@ -471,11 +467,15 @@ namespace luabind::detail {
             lua_pop(aState, 1);
             return retVec;
         } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
-            return fromLuaTuple<std::decay_t<T>>(aState);
+            auto newTuple = fromLuaTuple<std::decay_t<T>>(aState);
+            lua_pop(aState, 1);
+            return newTuple;
         } else if constexpr (traits::is_callable_v<std::decay_t<T>>){
             static_assert(detail::traits::always_false_v<T>, "Unable to create a function object from Lua, use the GetGlobalHelper/CallHelper instead");
         } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
-            return fromLuaTable<std::decay_t<T>>(aState);
+            auto newTable = fromLuaTable<std::decay_t<T>>(aState);
+            lua_pop(aState, 1);
+            return newTable;
         } else {
             static_assert(detail::traits::always_false_v<T>, "Unsupported type");
         }
