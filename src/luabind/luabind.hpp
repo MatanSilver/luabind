@@ -502,6 +502,7 @@ namespace luabind::detail {
             }
         } catch (std::exception& e) {
             luaL_error(aState, e.what());
+            return 0;
         }
     }
 }
