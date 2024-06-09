@@ -134,18 +134,7 @@ namespace luabind::detail::traits {
 namespace luabind::meta {
     static inline constexpr size_t MAX_FIELD_SIZE = 64;
 
-    struct discriminator_container {
-        std::array<char, MAX_FIELD_SIZE> D{};
-
-        constexpr bool operator==(discriminator_container const& aOther) const {
-            for (int i = 0; i < D.max_size(); ++i) {
-                if (D[i] != aOther.D[i]) {
-                    return false;
-                }
-            }
-            return true;
-        }
-    };
+    using discriminator_container = std::array<char, MAX_FIELD_SIZE>;
 
     template <discriminator_container Discriminator, typename Type>
     struct meta_field {
@@ -202,7 +191,7 @@ namespace luabind::meta {
             discriminator_container res{};
             for (int i = 0; i < aSize; ++i) {
                 assert(aSize < MAX_FIELD_SIZE); // Becomes a compile-time error if provided field name is too long
-                res.D[i] = aStr[i];
+                res[i] = aStr[i];
             }
             return res;
         }
@@ -360,13 +349,13 @@ namespace luabind::detail {
 
     template <typename T, size_t ...I>
     T getTableElementsAsMetaStruct(lua_State *aState, std::index_sequence<I...>) {
-        return {{getTableField<typename std::tuple_element_t<I, typename T::Fields>::T>(aState, std::tuple_element_t<I, typename T::Fields>::D.D.data())}...};
+        return {{getTableField<typename std::tuple_element_t<I, typename T::Fields>::T>(aState, std::tuple_element_t<I, typename T::Fields>::D.data())}...};
     }
 
     template <typename T, typename ...Args, size_t ...I>
     void setTableElementsAsMetaStruct(lua_State *aState, const T& aMetaStruct, std::index_sequence<I...>) {
         (
-            setTableField(aState, std::get<I>(aMetaStruct.fFields).value, std::tuple_element_t<I, typename T::Fields>::D.D.data())
+            setTableField(aState, std::get<I>(aMetaStruct.fFields).value, std::tuple_element_t<I, typename T::Fields>::D.data())
     ,...);
     }
 
