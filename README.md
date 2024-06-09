@@ -4,18 +4,19 @@ The basic principle is that one can embed a lua interpreter in a C++ application
 and use the functionality in this library to facilitate communication and translation
 between the two language domains. There is a straightforward mapping of types:
 
-| C++              | Lua      |
-|------------------|----------|
-| bool             | boolean  |
-| numeric          | number   |
-| char             | string   |
-| std::string      | string   |
-| const char *     | string   |
-| std::vector      | table    |
-| std::tuple       | table    |
-| callable object  | function |
-| function pointer | function |
-| method pointer   | function |
+| C++               | Lua      |
+|-------------------|----------|
+| bool              | boolean  |
+| numeric           | number   |
+| char              | string   |
+| std::string       | string   |
+| const char *      | string   |
+| std::vector       | table    |
+| std::tuple        | table    |
+| meta_struct       | table    |
+| callable object   | function |
+| function pointer  | function |
+| method pointer    | function |
 
 Variables can be easily introduced into the global namespace:
 ```C++
@@ -80,6 +81,32 @@ cmake --build .
     lua["newtuple"] = initialTuple;
     T reconstructedTuple = lua["newtuple"];
     ASSERT_EQ(initialTuple, reconstructedTuple);
+```
+
+C++20 does not have compile-time reflection. This means you can't know the names
+of struct fields at compile-time. That would have been a nice way to make tables
+with named fields. Instead, we can invent a "meta_struct" that uses clever
+compile-time processing to store field names at compile-time along with the other
+type information for the table elements. The end-result is similar to reflection:
+```C++
+    using namespace luabind::meta::literals;
+    using namespace luabind::meta;
+
+    /*
+     * NOTE: we use operator""_f to imitate struct field name reflection
+     * There is no runtime overhead to field setting or access--it's the same
+     * as a normal struct in performance.
+     */
+    using T = meta_struct<
+            meta_field<"biz"_f, int>,
+            meta_field<"buz"_f, bool>>;
+    T bar{{1}, {false}};
+    ASSERT_TRUE(bar.get<"buz"_f>());
+
+    luabind::Lua lua;
+    lua["newtable"] = bar;
+    T reconstructedTable = lua["newtable"];
+    ASSERT_TRUE(initialTable == reconstructedTable);
 ```
 
 # Compiling a Lua Module
