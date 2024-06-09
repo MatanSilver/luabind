@@ -271,7 +271,7 @@ namespace luabind::detail {
      * the caller to explicitly pass the type as a template argument.
      */
     template<typename T>
-    void toLua(lua_State *aState, T &&aVal);
+    void toLua(lua_State *aState, T const& aVal);
 
     /*
      * luabind::detail::fromLua receives a lua_State, and based on the template
@@ -283,9 +283,9 @@ namespace luabind::detail {
     T fromLua(lua_State *aState);
 
     template<typename T>
-    void setTableElement(lua_State *aState, T&& aVal, int i) {
+    void setTableElement(lua_State *aState, T const& aVal, int i) {
         // First push the Lua-domain converted aVal onto the stack
-        toLua(aState, std::forward<T>(aVal));
+        toLua(aState, aVal);
 
         // idx -1 on the stack is the converted aVal, -2 is the table
         lua_seti(aState, -2, i);
@@ -298,9 +298,9 @@ namespace luabind::detail {
     }
 
     template<typename T>
-    void setTableField(lua_State *aState, T&& aVal, const char *aFieldName) {
+    void setTableField(lua_State *aState, T const& aVal, const char *aFieldName) {
         // First push the Lua-domain converted aVal onto the stack
-        toLua(aState, std::forward<T>(aVal));
+        toLua(aState, aVal);
 
         // idx -1 on the stack is the converted aVal, -2 is the table
         lua_setfield(aState, -2, aFieldName);
@@ -387,26 +387,26 @@ namespace luabind::detail {
      * here we have better control over the compile errors.
      */
     template<typename T>
-    void toLua(lua_State *aState, T &&aVal) {
+    void toLua(lua_State *aState, T const& aVal) {
         if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
-            lua_pushboolean(aState, std::forward<T>(aVal));
+            lua_pushboolean(aState, aVal);
         } else if constexpr (std::is_arithmetic_v<std::decay_t<T>>) {
-            lua_pushnumber(aState, std::forward<T>(aVal));
+            lua_pushnumber(aState, aVal);
         } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
             lua_pushlstring(aState, aVal.c_str(), aVal.length());
         } else if constexpr (std::is_same_v<std::decay_t<T>, char *> || std::is_same_v<std::decay_t<T>, const char *>) {
-            lua_pushstring(aState, std::forward<T>(aVal));
+            lua_pushstring(aState, aVal);
         } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
             lua_createtable(aState, aVal.size(), 0);
             for (int i = 0; i < aVal.size(); ++i) {
                 setTableElement(aState, aVal[i], i + 1);
             }
         } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
-            toLuaTuple(aState, std::forward<T>(aVal));
+            toLuaTuple(aState, aVal);
         } else if constexpr (traits::is_callable_v<std::decay_t<T>>) {
-            lua_pushcfunction(aState, adapt(std::forward<T>(aVal)));
+            lua_pushcfunction(aState, adapt(aVal));
         } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
-            toLuaMetaStruct(aState, std::forward<T>(aVal));
+            toLuaMetaStruct(aState, aVal);
         } else {
             static_assert(traits::always_false_v<T>, "Unsupported type");
         }
@@ -563,8 +563,8 @@ namespace luabind {
             }
 
             template<typename T>
-            Lua& operator=(T &&aVal) {
-                detail::toLua(fLua.fState, std::forward<T>(aVal));
+            Lua& operator=(T const& aVal) {
+                detail::toLua(fLua.fState, aVal);
                 lua_setglobal(fLua.fState, fGlobalName.data());
                 return fLua;
             }
