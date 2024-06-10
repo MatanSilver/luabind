@@ -337,7 +337,7 @@ namespace luabind::detail {
         // Avoid another template function with an immediately invoked lambda to satisfy fold expression
         return {{[aState](){
             lua_getfield(aState, -1, std::tuple_element_t<I, typename T::Fields>::D.data());
-            return fromLua<T>(aState);
+            return fromLua<std::tuple_element_t<I, typename T::Fields>::T>(aState);
         }()}...};
     }
 
