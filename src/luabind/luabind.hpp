@@ -134,8 +134,15 @@ namespace luabind::detail::traits {
 namespace luabind::meta {
     static inline constexpr size_t MAX_FIELD_SIZE = 64;
 
+    /*
+     * Something that can store the data from a string at compile-time. std::string is supposed to be constexpr
+     * enough in C++20, but it seems MSVC might not have implemented that yet.
+     */
     using discriminator_container = std::array<char, MAX_FIELD_SIZE>;
 
+    /*
+     * A type that can store a value of arbitrary type, associated with a compile-time name
+     */
     template <discriminator_container Discriminator, typename Type>
     struct meta_field {
         using T = Type;
@@ -149,10 +156,15 @@ namespace luabind::meta {
 
         template <discriminator_container OtherDiscriminator, typename OtherType>
         bool operator==(meta_field<OtherDiscriminator, OtherType> const& aOther) const {
-            return (D == OtherDiscriminator) && std::is_same_v<T, OtherType> &&(value == aOther.value);
+            return (D == OtherDiscriminator) && std::is_same_v<T, OtherType> && (value == aOther.value);
         }
     };
 
+    /*
+     * Finds the index of the field in a meta_struct that has a particular name
+     * Constexpr, so this can be invoked at compile-time to reference a particular field of a meta_struct by name
+     * with no runtime overhead
+     */
     template <typename Fields, discriminator_container TestDiscriminator, size_t ...I>
     constexpr size_t getIndexMatchingName(std::index_sequence<I...>) {
         std::array<bool, std::tuple_size_v<Fields>> isEqual{std::tuple_element_t<I, Fields>::template hasName<TestDiscriminator>() ...};
@@ -160,6 +172,10 @@ namespace luabind::meta {
         return found - isEqual.cbegin();
     }
 
+    /*
+     * A struct-like type that stores fields of arbitrary types along with associated field names
+     * Allows name-based addressing of the stored fields
+     */
     template <typename ...MetaFields>
     struct meta_struct {
         using Fields = std::tuple<MetaFields...>;
@@ -170,15 +186,10 @@ namespace luabind::meta {
         meta_struct(meta_struct<MetaFields...> const& aOther) : fFields{aOther.fFields} {};
 
         template <discriminator_container Discriminator>
-        auto& get() {
+        auto& f() {
             constexpr size_t idx = getIndexMatchingName<Fields, Discriminator>(std::make_index_sequence<std::tuple_size_v<Fields>>());
             static_assert(idx < std::tuple_size_v<Fields>, "Field not found");
             return std::get<idx>(fFields).value;
-        }
-
-        template <discriminator_container Discriminator, typename T>
-        void set(T aValue) {
-            get<Discriminator>() = aValue;
         }
 
         bool operator==(meta_struct<MetaFields...> const& aOther) const {

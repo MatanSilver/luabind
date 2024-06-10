@@ -320,17 +320,17 @@ TEST(LuaBind, MetaStruct) {
             meta_field<"biz"_f, int>,
             meta_field<"buz"_f, bool>> bar{{1}, {false}};
 
-    auto x = bar.get<"biz"_f>();
-    auto y = bar.get<"buz"_f>();
+    auto x = bar.f<"biz"_f>();
+    auto y = bar.f<"buz"_f>();
 
     ASSERT_EQ(x, 1);
     ASSERT_EQ(y, false);
 
-    bar.set<"buz"_f>(true);
-    ASSERT_EQ(bar.get<"buz"_f>(), true);
+    bar.f<"buz"_f>() = true;
+    ASSERT_EQ(bar.f<"buz"_f>(), true);
 
-    bar.set<"biz"_f>(10);
-    ASSERT_EQ(bar.get<"biz"_f>(), 10);
+    bar.f<"biz"_f>() = 10;
+    ASSERT_EQ(bar.f<"biz"_f>(), 10);
 }
 
 TEST(LuaBind, MetaStructSerDe) {
