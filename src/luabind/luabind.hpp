@@ -297,21 +297,6 @@ namespace luabind::detail {
         return fromLua<T>(aState);
     }
 
-    template<typename T>
-    void setTableField(lua_State *aState, T const& aVal, const char *aFieldName) {
-        // First push the Lua-domain converted aVal onto the stack
-        toLua(aState, aVal);
-
-        // idx -1 on the stack is the converted aVal, -2 is the table
-        lua_setfield(aState, -2, aFieldName);
-    }
-
-    template<typename T>
-    T getTableField(lua_State *aState, const char* aFieldName) {
-        lua_getfield(aState, -1, aFieldName);
-        return fromLua<T>(aState);
-    }
-
     /*
      * setTableElementsFromTuple uses a fold-expression along with a compile-time
      * index_sequence to expand a single syntactic call to setTableElement
@@ -349,14 +334,22 @@ namespace luabind::detail {
 
     template <typename T, size_t ...I>
     T getTableElementsAsMetaStruct(lua_State *aState, std::index_sequence<I...>) {
-        return {{getTableField<typename std::tuple_element_t<I, typename T::Fields>::T>(aState, std::tuple_element_t<I, typename T::Fields>::D.data())}...};
+        // Avoid another template function with an immediately invoked lambda to satisfy fold expression
+        return {{[aState](){
+            lua_getfield(aState, -1, std::tuple_element_t<I, typename T::Fields>::D.data());
+            return fromLua<T>(aState);
+        }()}...};
     }
 
     template <typename T, typename ...Args, size_t ...I>
     void setTableElementsAsMetaStruct(lua_State *aState, const T& aMetaStruct, std::index_sequence<I...>) {
-        (
-            setTableField(aState, std::get<I>(aMetaStruct.fFields).value, std::tuple_element_t<I, typename T::Fields>::D.data())
-    ,...);
+        // Avoid another template function with an immediately invoked lambda to satisfy fold expression
+        ([aState, &aMetaStruct](){
+                    toLua(aState, std::get<I>(aMetaStruct.fFields).value);
+
+                    // idx -1 on the stack is the converted aVal, -2 is the table
+                    lua_setfield(aState, -2, std::tuple_element_t<I, typename T::Fields>::D.data());
+                }(),...);
     }
 
     template <typename T>
@@ -451,7 +444,8 @@ namespace luabind::detail {
             }
             T retVec;
             for (int i = 0; i < lua_rawlen(aState, -1); ++i) {
-                retVec.emplace_back(getTableElement<typename T::value_type>(aState, i + 1));
+                lua_geti(aState, -1, i + 1);
+                retVec.emplace_back(fromLua<typename T::value_type>(aState));
             }
             lua_pop(aState, 1);
             return retVec;
