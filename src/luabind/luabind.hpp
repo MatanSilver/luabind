@@ -13,6 +13,8 @@
 #include <string>
 #include <format>
 #include <array>
+#include <ranges>
+#include <algorithm>
 
 namespace luabind::detail::traits {
     /*
@@ -200,10 +202,7 @@ namespace luabind::meta {
     namespace literals {
         constexpr discriminator_container operator""_f(const char *aStr, const unsigned int aSize) {
             discriminator_container res{};
-            for (int i = 0; i < aSize; ++i) {
-                assert(aSize < MAX_FIELD_SIZE); // Becomes a compile-time error if provided field name is too long
-                res[i] = aStr[i];
-            }
+            std::ranges::copy_n(aStr, std::min(aSize, res.max_size()), res.begin());
             return res;
         }
     }
