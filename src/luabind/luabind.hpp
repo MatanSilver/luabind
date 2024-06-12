@@ -11,7 +11,6 @@
 #include <stdexcept>
 #include <cassert>
 #include <string>
-#include <format>
 #include <array>
 #include <ranges>
 #include <algorithm>
@@ -624,19 +623,21 @@ namespace luabind {
 
         template<typename ...Args>
         void pushFunctionAndArgs(const std::string_view aFunctionName, const Args &... aArgs) {
+            using namespace std::string_literals;
             // push function on stack
             lua_getglobal(fState, aFunctionName.data());
 
             if(!lua_isfunction(fState, -1) && !lua_iscfunction(fState, -1)) {
                 lua_pop(fState, 1); // We need to clean up the global we retrieved before throwing
 
-                throw RuntimeError(std::format("Global by name {} is not a function", aFunctionName));
+                throw RuntimeError("Global by name "s + aFunctionName.data() + " is not a function"s);
             }
             // push aArgs on stack, in order left to right
             (detail::toLua(fState, aArgs), ...);
         }
 
         void handleLuaErrCode(int aErrCode) {
+            using namespace std::string_literals;
             auto stringFromErrorOnStack = [&]() -> std::string {
                 return detail::fromLua<std::string>(fState);
             };
@@ -654,7 +655,7 @@ namespace luabind {
                 case LUA_ERRFILE:
                     throw FileError(stringFromErrorOnStack());
                 default:
-                    throw RuntimeError(std::format("Unknown error code: {}", aErrCode));
+                    throw RuntimeError("Unknown error code: "s + std::to_string(aErrCode));
             }
         }
 
