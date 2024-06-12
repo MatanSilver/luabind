@@ -230,10 +230,15 @@ TEST(LuaBind, ChainedScriptsAndCFuncs) {
 }
 
 template <typename T>
+T roundTrip(T const &aCppVal, luabind::Lua &aLua) {
+  aLua["luaVal"] = aCppVal;
+  return aLua["luaVal"];
+}
+
+template <typename T>
 T roundTrip(T const &aCppVal) {
   luabind::Lua lua;
-  lua["luaval"] = aCppVal;
-  return lua["luaval"];
+  return roundTrip(aCppVal, lua);
 }
 
 TEST(LuaBind, IntVector) {
@@ -403,7 +408,7 @@ TEST(LuaBind, StackManagement) {
   ASSERT_EQ(lua_gettop(l), 0);
   using MostComplexType = meta_struct<meta_field<"structField"_f, std::tuple<int, std::vector<std::string>>>>;
   MostComplexType original{{{1, {"elem1", "elem2"}}}};
-  ASSERT_TRUE(original==roundTrip(original));
+  ASSERT_TRUE(original==roundTrip(original, lua));
   ASSERT_EQ(lua_gettop(l), 0);
 }
 
