@@ -256,6 +256,14 @@ TEST(LuaBind, Tuple) {
   ASSERT_EQ(initialTuple, roundTrip(initialTuple));
 }
 
+TEST(LuaBind, TupleVector) {
+  std::vector<std::tuple<int, std::string>> initialVector{
+      {0, "zero"},
+      {1, "one"}
+  };
+  ASSERT_EQ(initialVector, roundTrip(initialVector));
+}
+
 TEST(LuaBind, TupleFromLuaFunction) {
   luabind::Lua lua;
   using T = std::tuple<int, bool, std::string>;
@@ -307,11 +315,6 @@ TEST(LuaBind, SyntaxError) {
   ASSERT_THROW(willThrow(), luabind::SyntaxError);
 }
 
-int main(int aArgc, char **aArgv) {
-  ::testing::InitGoogleTest(&aArgc, aArgv);
-  return RUN_ALL_TESTS();
-}
-
 TEST(LuaBind, MetaStruct) {
   using namespace luabind::meta::literals;
   using namespace luabind::meta;
@@ -344,6 +347,17 @@ TEST(LuaBind, MetaStructSerDe) {
   ASSERT_TRUE(bar==roundTrip(bar));
 }
 
+TEST(LuaBind, MetaStructVector) {
+  using namespace luabind::meta::literals;
+  using namespace luabind::meta;
+
+  using MetaStructType = meta_struct<meta_field<"field1"_f, int>, meta_field<"field2"_f, std::string>>;
+  using VectorType = std::vector<MetaStructType>;
+
+  VectorType initialValue{{{0}, {"zero"}}, {{1}, {"one"}}};
+  ASSERT_TRUE(initialValue==roundTrip(initialValue));
+}
+
 TEST(LuaBind, MetaStructIsReadable) {
   using namespace luabind::meta::literals;
   using namespace luabind::meta;
@@ -364,4 +378,36 @@ TEST(LuaBind, MetaStructIsReadable) {
       meta_field<"foo"_f, int>,
       meta_field<"far"_f, bool>> expected{{1}, {false}};
   ASSERT_TRUE(expected==lua["transform"](bar));
+}
+
+TEST(LuaBind, StackManagement) {
+  using namespace luabind::meta::literals;
+  using namespace luabind::meta;
+
+  auto l = luaL_newstate();
+  luabind::Lua lua(l);
+  ASSERT_EQ(lua_gettop(l), 0);
+  lua["global"] = 1;
+  ASSERT_EQ(lua_gettop(l), 0);
+  int i = lua["global"];
+  ASSERT_EQ(i, 1);
+  ASSERT_EQ(lua_gettop(l), 0);
+  lua << R"(
+    someFunc = function(arg)
+      return arg == "blah"
+    end
+  )";
+  ASSERT_EQ(lua_gettop(l), 0);
+  bool isSame = lua["someFunc"]("blah");
+  ASSERT_TRUE(isSame);
+  ASSERT_EQ(lua_gettop(l), 0);
+  using MostComplexType = meta_struct<meta_field<"structField"_f, std::tuple<int, std::vector<std::string>>>>;
+  MostComplexType original{{{1, {"elem1", "elem2"}}}};
+  ASSERT_TRUE(original==roundTrip(original));
+  ASSERT_EQ(lua_gettop(l), 0);
+}
+
+int main(int aArgc, char **aArgv) {
+  ::testing::InitGoogleTest(&aArgc, aArgv);
+  return RUN_ALL_TESTS();
 }
