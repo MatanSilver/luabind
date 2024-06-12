@@ -24,7 +24,7 @@ namespace luabind::detail::traits {
      */
 
     template<typename T>
-    inline constexpr bool always_false_v = false;
+    inline constexpr bool kAlwaysFalseV = false;
 
     /*
      * Something "callable" can be:
@@ -48,31 +48,31 @@ namespace luabind::detail::traits {
     template<typename Callable>
     struct function_traits;
 
-    template<typename ReturnType, typename... Args>
-    struct function_traits<ReturnType (*)(Args...)> {
-        using return_type = ReturnType;
-        using argument_types = std::tuple<Args...>;
+    template<typename RetType, typename... Args>
+    struct function_traits<RetType (*)(Args...)> {
+        using ReturnType = RetType;
+        using ArgumentTypes = std::tuple<Args...>;
     };
 
-    template<typename ReturnType, typename ClassType, typename... Args>
-    struct function_traits<ReturnType (ClassType::*)(Args...)> {
-        using return_type = ReturnType;
-        using argument_types = std::tuple<Args...>;
+    template<typename RetType, typename ClassType, typename... Args>
+    struct function_traits<RetType (ClassType::*)(Args...)> {
+        using ReturnType = RetType;
+        using ArgumentTypes = std::tuple<Args...>;
     };
 
-    template<typename ReturnType, typename ClassType, typename... Args>
-    struct function_traits<ReturnType (ClassType::*)(Args...) const> {
-        using return_type = ReturnType;
-        using argument_types = std::tuple<Args...>;
+    template<typename RetType, typename ClassType, typename... Args>
+    struct function_traits<RetType (ClassType::*)(Args...) const> {
+        using ReturnType = RetType;
+        using ArgumentTypes = std::tuple<Args...>;
     };
 
     template<typename Callable>
     struct function_traits {
     private:
-        using call_type = decltype(&Callable::operator());
+        using CallType = decltype(&Callable::operator());
     public:
-        using return_type = typename function_traits<call_type>::return_type;
-        using argument_types = typename function_traits<call_type>::argument_types;
+        using ReturnType = typename function_traits<CallType>::ReturnType;
+        using ArgumentTypes = typename function_traits<CallType>::ArgumentTypes;
     };
 
     struct MightCollide {
@@ -86,7 +86,7 @@ namespace luabind::detail::traits {
     };
 
     template <typename T>
-    constexpr bool has_call_operator = !requires () { &DetectCollision<T>::operator(); };
+    constexpr bool kHasCallOperator = !requires () { &DetectCollision<T>::operator(); };
 
 
     /*
@@ -104,9 +104,9 @@ namespace luabind::detail::traits {
      * different kinds of invocable types without knowing the argument types in advance.
      */
     template <typename T>
-    constexpr bool is_callable_v = std::is_function_v<std::remove_pointer_t<T>> ||
+    constexpr bool kIsCallableV = std::is_function_v<std::remove_pointer_t<T>> ||
             std::is_member_function_pointer_v<T> ||
-            has_call_operator<T>;
+            kHasCallOperator<T>;
 
     template<typename>
     struct is_vector : std::false_type {
@@ -117,7 +117,7 @@ namespace luabind::detail::traits {
     };
 
     template<typename T>
-    constexpr bool is_vector_v = is_vector<T>::value;
+    constexpr bool kIsVectorV = is_vector<T>::value;
 
 
     template<typename>
@@ -129,36 +129,36 @@ namespace luabind::detail::traits {
     };
 
     template<typename T>
-    constexpr bool is_tuple_v = is_tuple<T>::value;
+    constexpr bool kIsTupleV = is_tuple<T>::value;
 }
 
 
 namespace luabind::meta {
-    static inline constexpr size_t MAX_FIELD_SIZE = 64;
+    static inline constexpr size_t kMaxFieldSize = 64;
 
     /*
      * Something that can store the data from a string at compile-time. std::string is supposed to be constexpr
      * enough in C++20, but it seems MSVC might not have implemented that yet.
      */
-    using discriminator_container = std::array<char, MAX_FIELD_SIZE>;
+    using DiscriminatorContainer = std::array<char, kMaxFieldSize>;
 
     /*
      * A type that can store a value of arbitrary type, associated with a compile-time name
      */
-    template <discriminator_container Discriminator, typename Type>
+    template <DiscriminatorContainer Discriminator, typename Type>
     struct meta_field {
         using T = Type;
-        T value;
-        static inline constexpr discriminator_container D = Discriminator;
+        T fValue;
+        static inline constexpr DiscriminatorContainer fDiscriminator = Discriminator;
 
-        template <discriminator_container TestDiscriminator>
+        template <DiscriminatorContainer TestDiscriminator>
         static constexpr bool hasName() {
-            return TestDiscriminator == D;
+            return TestDiscriminator == fDiscriminator;
         }
 
-        template <discriminator_container OtherDiscriminator, typename OtherType>
+        template <DiscriminatorContainer OtherDiscriminator, typename OtherType>
         bool operator==(meta_field<OtherDiscriminator, OtherType> const& aOther) const {
-            return (D == OtherDiscriminator) && std::is_same_v<T, OtherType> && (value == aOther.value);
+            return (fDiscriminator == OtherDiscriminator) && std::is_same_v<T, OtherType> && (fValue == aOther.fValue);
         }
     };
 
@@ -167,9 +167,10 @@ namespace luabind::meta {
      * Constexpr, so this can be invoked at compile-time to reference a particular field of a meta_struct by name
      * with no runtime overhead
      */
-    template <typename Fields, discriminator_container TestDiscriminator, size_t ...I>
+    template <typename Fields, DiscriminatorContainer TestDiscriminator, size_t ...I>
     constexpr size_t getIndexMatchingName(std::index_sequence<I...>) {
-        std::array<bool, std::tuple_size_v<Fields>> isEqual{std::tuple_element_t<I, Fields>::template hasName<TestDiscriminator>() ...};
+        using NameEqualT = std::array<bool, std::tuple_size_v<Fields>>;
+        NameEqualT isEqual{std::tuple_element_t<I, Fields>::template hasName<TestDiscriminator>() ...};
         auto found = std::find(isEqual.cbegin(), isEqual.cend(), true);
         return found - isEqual.cbegin();
     }
@@ -187,11 +188,11 @@ namespace luabind::meta {
 
         meta_struct(meta_struct<MetaFields...> const& aOther) : fFields{aOther.fFields} {};
 
-        template <discriminator_container Discriminator>
+        template <DiscriminatorContainer Discriminator>
         auto& f() {
             constexpr size_t idx = getIndexMatchingName<Fields, Discriminator>(std::make_index_sequence<std::tuple_size_v<Fields>>());
             static_assert(idx < std::tuple_size_v<Fields>, "Field not found");
-            return std::get<idx>(fFields).value;
+            return std::get<idx>(fFields).fValue;
         }
 
         bool operator==(meta_struct<MetaFields...> const& aOther) const {
@@ -200,8 +201,8 @@ namespace luabind::meta {
     };
 
     namespace literals {
-        constexpr discriminator_container operator""_f(const char *aStr, const unsigned int aSize) {
-            discriminator_container res{};
+        constexpr DiscriminatorContainer operator""_f(const char *aStr, const unsigned int aSize) {
+            DiscriminatorContainer res{};
             std::ranges::copy_n(aStr, std::min(aSize, res.max_size()), res.begin());
             return res;
         }
@@ -222,7 +223,7 @@ namespace luabind::detail::traits {
 namespace luabind {
     /*
      * luabind::adapt is a clever function that converts a callable argument
-     * to a c-style function pointer to a function that adheres to Lua's
+     * to a c-style function pointer to a function that adheres to the Lua
      * requirements of taking in a lua_State* and returning an int. The way we do
      * this is by creating a new specialization of a global variable /for every call site/
      * of luabind::adapt, and storing a reference to the callable in that specialized global
@@ -293,17 +294,17 @@ namespace luabind::detail {
     T fromLua(lua_State *aState);
 
     template<typename T>
-    void setTableElement(lua_State *aState, T const& aVal, int i) {
+    void setTableElement(lua_State *aState, T const& aVal, int aIdx) {
         // First push the Lua-domain converted aVal onto the stack
         toLua(aState, aVal);
 
         // idx -1 on the stack is the converted aVal, -2 is the table
-        lua_seti(aState, -2, i);
+        lua_seti(aState, -2, aIdx);
     }
 
     template<typename T>
-    T getTableElement(lua_State *aState, int i) {
-        lua_geti(aState, -1, i);
+    T getTableElement(lua_State *aState, int aIdx) {
+        lua_geti(aState, -1, aIdx);
         return fromLua<T>(aState);
     }
 
@@ -338,27 +339,27 @@ namespace luabind::detail {
 
     template<typename T>
     T fromLuaTuple(lua_State *aState) {
-        constexpr std::size_t tuple_size = std::tuple_size_v<T>;
-        return getTableElementsAsTuple<T>(aState, std::make_index_sequence<tuple_size>());
+        constexpr std::size_t tupleSize = std::tuple_size_v<T>;
+        return getTableElementsAsTuple<T>(aState, std::make_index_sequence<tupleSize>());
     }
 
     template <typename T, size_t ...I>
     T getTableElementsAsMetaStruct(lua_State *aState, std::index_sequence<I...>) {
         // Avoid another template function with an immediately invoked lambda to satisfy fold expression
         return {{[aState](){
-            lua_getfield(aState, -1, std::tuple_element_t<I, typename T::Fields>::D.data());
+            lua_getfield(aState, -1, std::tuple_element_t<I, typename T::Fields>::fDiscriminator.data());
             return fromLua<std::tuple_element_t<I, typename T::Fields>::T>(aState);
         }()}...};
     }
 
-    template <typename T, typename ...Args, size_t ...I>
+    template <typename T, size_t ...I>
     void setTableElementsAsMetaStruct(lua_State *aState, const T& aMetaStruct, std::index_sequence<I...>) {
         // Avoid another template function with an immediately invoked lambda to satisfy fold expression
         ([aState, &aMetaStruct](){
-                    toLua(aState, std::get<I>(aMetaStruct.fFields).value);
+                    toLua(aState, std::get<I>(aMetaStruct.fFields).fValue);
 
                     // idx -1 on the stack is the converted aVal, -2 is the table
-                    lua_setfield(aState, -2, std::tuple_element_t<I, typename T::Fields>::D.data());
+                    lua_setfield(aState, -2, std::tuple_element_t<I, typename T::Fields>::fDiscriminator.data());
                 }(),...);
     }
 
@@ -399,19 +400,19 @@ namespace luabind::detail {
             lua_pushlstring(aState, aVal.c_str(), aVal.length());
         } else if constexpr (std::is_same_v<std::decay_t<T>, char *> || std::is_same_v<std::decay_t<T>, const char *>) {
             lua_pushstring(aState, aVal);
-        } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
+        } else if constexpr (traits::kIsVectorV<std::decay_t<T>>) {
             lua_createtable(aState, aVal.size(), 0);
             for (int i = 0; i < aVal.size(); ++i) {
                 setTableElement(aState, aVal[i], i + 1);
             }
-        } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
+        } else if constexpr (traits::kIsTupleV<std::decay_t<T>>) {
             toLuaTuple(aState, aVal);
-        } else if constexpr (traits::is_callable_v<std::decay_t<T>>) {
+        } else if constexpr (traits::kIsCallableV<std::decay_t<T>>) {
             lua_pushcfunction(aState, adapt(aVal));
         } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
             toLuaMetaStruct(aState, aVal);
         } else {
-            static_assert(traits::always_false_v<T>, "Unsupported type");
+            static_assert(traits::kAlwaysFalseV<T>, "Unsupported type");
         }
     }
 
@@ -448,7 +449,7 @@ namespace luabind::detail {
             lua_pop(aState, 1);
             return ret;
             // We don't support const char* for memory safety reasons
-        } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
+        } else if constexpr (traits::kIsVectorV<std::decay_t<T>>) {
             if (!lua_istable(aState, -1)) {
                 throw IncorrectType("Runtime type cannot be converted to a vector");
             }
@@ -459,18 +460,19 @@ namespace luabind::detail {
             }
             lua_pop(aState, 1);
             return retVec;
-        } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
+        } else if constexpr (traits::kIsTupleV<std::decay_t<T>>) {
             auto newTuple = fromLuaTuple<std::decay_t<T>>(aState);
             lua_pop(aState, 1);
             return newTuple;
-        } else if constexpr (traits::is_callable_v<std::decay_t<T>>){
-            static_assert(detail::traits::always_false_v<T>, "Unable to create a function object from Lua, use the GetGlobalHelper/CallHelper instead");
+        } else if constexpr (traits::kIsCallableV<std::decay_t<T>>){
+            static_assert(detail::traits::kAlwaysFalseV<T>,
+                "Unable to create a function object from Lua, use the GetGlobalHelper/CallHelper instead");
         } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
             auto newTable = fromLuaMetaStruct<std::decay_t<T>>(aState);
             lua_pop(aState, 1);
             return newTable;
         } else {
-            static_assert(detail::traits::always_false_v<T>, "Unsupported type");
+            static_assert(detail::traits::kAlwaysFalseV<T>, "Unsupported type");
         }
     }
 
@@ -494,14 +496,14 @@ namespace luabind::detail {
 
     template<typename Callable, typename UniqueType>
     int adapted(lua_State *aState) {
-        using retType = typename detail::traits::function_traits<Callable>::return_type;
-        using argTypes = typename detail::traits::function_traits<Callable>::argument_types;
+        using RetType = typename detail::traits::function_traits<Callable>::ReturnType ;
+        using ArgTypes = typename detail::traits::function_traits<Callable>::ArgumentTypes ;
         try {
-            if constexpr (std::is_same_v<retType, void>) {
-                std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, argTypes()));
+            if constexpr (std::is_same_v<RetType, void>) {
+                std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, ArgTypes()));
                 return 0;
             } else {
-                toLua(aState, std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, argTypes())));
+                toLua(aState, std::apply(*gCallable<Callable, UniqueType>, getArgsAsTuple(aState, ArgTypes())));
                 return 1;
             }
         } catch (std::exception& e) {
@@ -557,18 +559,18 @@ namespace luabind {
                     : fGlobalName(aGlobalName), fLua(aLua) {}
 
             template<typename ...Args>
-            auto operator()(const Args &... args) {
-                return fLua.call(fGlobalName, args...);
+            auto operator()(const Args &... aArgs) {
+                return fLua.call(fGlobalName, aArgs...);
             }
 
             template<typename T>
-            operator T() {
+            operator T() { // NOLINT(google-explicit-constructor)
                 lua_getglobal(fLua.fState, fGlobalName.data());
                 return detail::fromLua<T>(fLua.fState);
             }
 
             template<typename T>
-            Lua& operator=(T const& aVal) {
+            Lua& operator=(T const& aVal) { // NOLINT(misc-unconventional-assign-operator)
                 detail::toLua(fLua.fState, aVal);
                 lua_setglobal(fLua.fState, fGlobalName.data());
                 return fLua;
@@ -607,7 +609,7 @@ namespace luabind {
             }
 
             template<typename T>
-            operator T() {
+            operator T() { // NOLINT(google-explicit-constructor)
                 assert(!fWasCasted); // We can only pop off the stack once
                 fWasCasted = true;
                 return detail::fromLua<T>(fState);
@@ -619,7 +621,7 @@ namespace luabind {
         };
 
         template<typename ...Args>
-        void pushFunctionAndArgs(const std::string_view aFunctionName, const Args &... args) {
+        void pushFunctionAndArgs(const std::string_view aFunctionName, const Args &... aArgs) {
             // push function on stack
             lua_getglobal(fState, aFunctionName.data());
 
@@ -628,8 +630,8 @@ namespace luabind {
 
                 throw RuntimeError(std::format("Global by name {} is not a function", aFunctionName));
             }
-            // push args on stack, in order left to right
-            (detail::toLua(fState, args), ...);
+            // push aArgs on stack, in order left to right
+            (detail::toLua(fState, aArgs), ...);
         }
 
         void handleLuaErrCode(int aErrCode) {
@@ -655,16 +657,16 @@ namespace luabind {
         }
 
         template<typename ...Args>
-        void callWithoutReturnValue(const std::string_view aFunctionName, const Args &... args) {
-            pushFunctionAndArgs(aFunctionName, args...);
-            auto errCode = lua_pcall(fState, sizeof...(args), 0, 0);
+        void callWithoutReturnValue(const std::string_view aFunctionName, const Args &... aArgs) {
+            pushFunctionAndArgs(aFunctionName, aArgs...);
+            auto errCode = lua_pcall(fState, sizeof...(aArgs), 0, 0);
             handleLuaErrCode(errCode);
         }
 
         template<typename ...Args>
-        auto callWithReturnValue(const std::string_view aFunctionName, const Args &... args) {
-            pushFunctionAndArgs(aFunctionName, args...);
-            auto errCode = lua_pcall(fState, sizeof...(args), 1, 0);
+        auto callWithReturnValue(const std::string_view aFunctionName, const Args &... aArgs) {
+            pushFunctionAndArgs(aFunctionName, aArgs...);
+            auto errCode = lua_pcall(fState, sizeof...(aArgs), 1, 0);
             handleLuaErrCode(errCode);
             return RetHelper(fState);
         }
@@ -691,15 +693,15 @@ namespace luabind {
             ~CallHelper() {
                 // If we never called the operator T(), we should run the function with no return val
                 if (!fWasCasted) {
-                    auto lam = [&](const auto &... args) { fLua.callWithoutReturnValue(args...); };
+                    auto lam = [&](auto const &... aArgs) { fLua.callWithoutReturnValue(aArgs...); };
                     std::apply(lam, std::tuple_cat(std::tuple{fFunctionName}, fArgs));
                 }
             }
 
             template<typename T>
-            operator T() {
+            operator T() { // NOLINT(google-explicit-constructor)
                 fWasCasted = true;
-                auto lam = [&](const auto &... args) { return fLua.callWithReturnValue(args...); };
+                auto lam = [&](auto const&... aArgs) { return fLua.callWithReturnValue(aArgs...); };
                 return std::apply(lam, std::tuple_cat(std::tuple{fFunctionName}, fArgs));
             }
 
@@ -711,8 +713,8 @@ namespace luabind {
         };
 
         template<typename ...Args>
-        auto call(const std::string_view aFunctionName, const Args &... args) {
-            return CallHelper{*this, aFunctionName, std::tuple{args...}};
+        auto call(const std::string_view aFunctionName, const Args &... aArgs) {
+            return CallHelper{*this, aFunctionName, std::tuple{aArgs...}};
         }
 
     private:
