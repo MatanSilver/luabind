@@ -492,6 +492,7 @@ namespace luabind::detail {
      */
     template<typename ...Args>
     std::tuple<Args...> getArgsAsTuple(lua_State *aState, std::tuple<Args...>) {
+      // Args... may be empty if there are on args, which is ok despite style warning about the empty decl
         return {detail::fromLua<Args>(aState) ...};
     };
 
