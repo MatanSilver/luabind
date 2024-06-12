@@ -196,9 +196,9 @@ namespace luabind::meta {
         return std::get<idx>(fFields).fValue;
       }
 
-        bool operator==(meta_struct<MetaFields...> const& aOther) const {
-            return fFields == aOther.fFields;
-        }
+      bool operator==(meta_struct<MetaFields...> const &aOther) const {
+        return fFields==aOther.fFields;
+      }
     };
 
     namespace literals {
