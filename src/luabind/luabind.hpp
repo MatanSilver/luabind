@@ -181,19 +181,20 @@ namespace luabind::meta {
      */
     template <typename ...MetaFields>
     struct meta_struct {
-        using Fields = std::tuple<MetaFields...>;
-        Fields fFields;
+      using Fields = std::tuple<MetaFields...>;
+      Fields fFields;
 
       meta_struct(MetaFields ...aFields) : fFields{aFields...} {} // NOLINT(google-explicit-constructor)
 
-        meta_struct(meta_struct<MetaFields...> const& aOther) : fFields{aOther.fFields} {};
+      meta_struct(meta_struct<MetaFields...> const &aOther) : fFields{aOther.fFields} {};
 
-        template <DiscriminatorContainer Discriminator>
-        auto& f() {
-            constexpr size_t idx = getIndexMatchingName<Fields, Discriminator>(std::make_index_sequence<std::tuple_size_v<Fields>>());
-            static_assert(idx < std::tuple_size_v<Fields>, "Field not found");
-            return std::get<idx>(fFields).fValue;
-        }
+      template <DiscriminatorContainer Discriminator>
+      auto &f() {
+        constexpr size_t
+            idx = getIndexMatchingName<Fields, Discriminator>(std::make_index_sequence<std::tuple_size_v<Fields>>());
+        static_assert(idx < std::tuple_size_v<Fields>, "Field not found");
+        return std::get<idx>(fFields).fValue;
+      }
 
         bool operator==(meta_struct<MetaFields...> const& aOther) const {
             return fFields == aOther.fFields;
