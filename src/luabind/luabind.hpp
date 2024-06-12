@@ -184,7 +184,7 @@ namespace luabind::meta {
         using Fields = std::tuple<MetaFields...>;
         Fields fFields;
 
-        meta_struct(MetaFields ...aFields) : fFields{aFields...} {}
+      meta_struct(MetaFields ...aFields) : fFields{aFields...} {} // NOLINT(google-explicit-constructor)
 
         meta_struct(meta_struct<MetaFields...> const& aOther) : fFields{aOther.fFields} {};
 
