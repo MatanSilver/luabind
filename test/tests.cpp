@@ -15,35 +15,35 @@ static const char *gIdentityFunction = R"(
 TEST(LuaBind, Call) {
   luabind::Lua lua;
   lua << R"(
-            myprint = function(a, b)
+            printFunc = function(a, b)
                 print(a, b)
             end
         )";
-  lua["myprint"]("thing", "stuff");
+  lua["printFunc"]("thing", "stuff");
 }
 
 TEST(LuaBind, CallRNumberArg) {
   luabind::Lua lua;
   lua << R"(
-            myadd = function(a, b)
+            addFunc = function(a, b)
                 return a+b
             end
         )";
-  int x = lua["myadd"](1, 2);
+  int x = lua["addFunc"](1, 2);
   ASSERT_EQ(x, 3);
 }
 
 TEST(LuaBind, CallRBooleanArg) {
   luabind::Lua lua;
   lua << R"(
-            myand = function(a, b)
+            andFunc = function(a, b)
                 return a and b
             end
         )";
-  bool x = lua["myand"](true, false);
+  bool x = lua["andFunc"](true, false);
   ASSERT_EQ(x, false);
 
-  bool y = lua["myand"](true, true);
+  bool y = lua["andFunc"](true, true);
   ASSERT_EQ(y, true);
 }
 
@@ -113,8 +113,8 @@ int add(int a, int b) {
 
 TEST(LuaBind, ExposeCStyleFunction) {
   luabind::Lua lua;
-  lua["myadd"] = &add;
-  ASSERT_EQ((int)lua["myadd"](1, 2), 3);
+  lua["addFunc"] = &add;
+  ASSERT_EQ((int)lua["addFunc"](1, 2), 3);
 }
 
 TEST(LuaBind, MultipleExposeSameSignature) {
