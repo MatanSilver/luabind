@@ -519,15 +519,33 @@ class Lua {
   public:
   Lua() {
     fState = luaL_newstate();
+    fOwnsState = true;
 
     // Initialize the standard library. Not necessary, but useful
     luaL_openlibs(fState);
   }
 
-  explicit Lua(lua_State *aState) : fState(aState) {}
+  explicit Lua(lua_State *aState) : fState(aState), fOwnsState(false) {}
+
+  Lua(Lua const&) = delete; // Copy assignment
+
+  Lua& operator=(Lua const&) = delete; // Copy constructor
+
+  Lua(Lua&& aOther) : fState(aOther.fState), fOwnsState(aOther.fOwnsState) { // Move constructor
+    aOther.fState = nullptr;
+    aOther.fOwnsState = false;
+  }
+
+  Lua& operator=(Lua&& aOther) { // Move assignment
+    std::swap(this->fState, aOther.fState);
+    this->fOwnsState = aOther.fOwnsState;
+    return *this;
+  }
 
   ~Lua() {
-    lua_close(fState);
+    if (fOwnsState && fState != nullptr) {
+      lua_close(fState);
+    }
   }
 
   /*
@@ -711,6 +729,7 @@ class Lua {
 
   private:
   lua_State *fState;
+  bool fOwnsState;
 };
 
 template <typename Callable, typename UniqueType>
