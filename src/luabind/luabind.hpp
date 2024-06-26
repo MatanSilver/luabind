@@ -67,9 +67,7 @@ struct function_traits<RetType (ClassType::*)(Args...) const> {
 
 template <typename Callable>
 struct function_traits {
-  private:
   using CallType = decltype(&Callable::operator());
-  public:
   using ReturnType = typename function_traits<CallType>::ReturnType;
   using ArgumentTypes = typename function_traits<CallType>::ArgumentTypes;
 };
