@@ -376,6 +376,18 @@ void toLuaMetaStruct(lua_State *aState, const T &aVal) {
   setTableElementsAsMetaStruct(aState, aVal, std::make_index_sequence<std::tuple_size_v<typename T::Fields>>());
 }
 
+template <std::invocable T>
+class ScopeGuard {
+  public:
+  [[nodiscard]] explicit ScopeGuard(T aInvocable) : fInvocable{aInvocable} {}
+
+  ~ScopeGuard() {
+    fInvocable();
+  }
+  private:
+  T fInvocable;
+};
+
 /*
  * Given a value aVal with deduced type T, push the correctly
  * typed value onto the Lua stack. We use "if constexpr" to do
@@ -386,6 +398,8 @@ void toLuaMetaStruct(lua_State *aState, const T &aVal) {
  */
 template <typename T>
 void toLua(lua_State *aState, T const &aVal) {
+  int expectedFinalStackSize = lua_gettop(aState) + 1;
+  auto guard = ScopeGuard([aState, expectedFinalStackSize]() { assert(lua_gettop(aState)==expectedFinalStackSize); });
   if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
     lua_pushboolean(aState, aVal);
   } else if constexpr (std::is_arithmetic_v<std::decay_t<T>>) {
@@ -420,19 +434,20 @@ void toLua(lua_State *aState, T const &aVal) {
  */
 template <typename T>
 T fromLua(lua_State *aState) {
+  int expectedFinalStackSize = lua_gettop(aState) - 1;
+  auto guard = ScopeGuard([aState, expectedFinalStackSize]() { assert(lua_gettop(aState)==expectedFinalStackSize); });
+  auto popOnExit = ScopeGuard([aState]() { lua_pop(aState, 1); });
   if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
     if (!lua_isboolean(aState, -1)) {
       throw IncorrectType("Runtime type cannot be converted to bool");
     }
     T ret = lua_toboolean(aState, -1);
-    lua_pop(aState, 1);
     return ret;
   } else if constexpr (std::is_arithmetic_v<std::decay_t<T>>) {
     if (!lua_isnumber(aState, -1)) {
       throw IncorrectType("Runtime type cannot be converted to an arithmetic type");
     }
     T ret = lua_tonumber(aState, -1);
-    lua_pop(aState, 1);
     return ret;
   } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
     if (!lua_isstring(aState, -1) || lua_isnumber(aState, -1)) {
@@ -440,7 +455,6 @@ T fromLua(lua_State *aState) {
       throw IncorrectType("Runtime type cannot be converted to a string");
     }
     T ret = lua_tostring(aState, -1);
-    lua_pop(aState, 1);
     return ret;
     // We don't support const char* for memory safety reasons
   } else if constexpr (traits::kIsVectorV<std::decay_t<T>>) {
@@ -452,18 +466,15 @@ T fromLua(lua_State *aState) {
       lua_geti(aState, -1, i + 1);
       retVec.emplace_back(fromLua<typename T::value_type>(aState));
     }
-    lua_pop(aState, 1);
     return retVec;
   } else if constexpr (traits::kIsTupleV<std::decay_t<T>>) {
     auto newTuple = fromLuaTuple<std::decay_t<T>>(aState);
-    lua_pop(aState, 1);
     return newTuple;
   } else if constexpr (traits::kIsCallableV<std::decay_t<T>>) {
     static_assert(detail::traits::kAlwaysFalseV<T>,
                   "Unable to create a function object from Lua, use the GetGlobalHelper/CallHelper instead");
   } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
     auto newTable = fromLuaMetaStruct<std::decay_t<T>>(aState);
-    lua_pop(aState, 1);
     return newTable;
   } else {
     static_assert(detail::traits::kAlwaysFalseV<T>, "Unsupported type");
