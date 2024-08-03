@@ -414,7 +414,7 @@ class ScopeGuard {
  * so we can get a nice API by writing a construction wrapper
  * around ScopeGuard
  */
-template <ScopeTrigger Trigger = ScopeTrigger::ALWAYS, typename T>
+template <ScopeTrigger Trigger = ScopeTrigger::ALWAYS, std::invocable T>
 auto makeScopeGuard(T aInvocable) {
   return ScopeGuard<Trigger, T>(aInvocable);
 }
