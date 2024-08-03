@@ -376,17 +376,48 @@ void toLuaMetaStruct(lua_State *aState, const T &aVal) {
   setTableElementsAsMetaStruct(aState, aVal, std::make_index_sequence<std::tuple_size_v<typename T::Fields>>());
 }
 
-template <std::invocable T>
+enum class ScopeTrigger {
+  SUCCESS,
+  FAILURE,
+  ALWAYS
+};
+
+template <ScopeTrigger Trigger, std::invocable T>
 class ScopeGuard {
   public:
   [[nodiscard]] explicit ScopeGuard(T aInvocable) : fInvocable{aInvocable} {}
 
   ~ScopeGuard() {
-    fInvocable();
+    if constexpr (Trigger==ScopeTrigger::SUCCESS) {
+      if (!std::uncaught_exceptions()) {
+        fInvocable();
+      }
+    } else if constexpr (Trigger==ScopeTrigger::FAILURE) {
+      if (std::uncaught_exceptions()) {
+        fInvocable();
+      }
+    } else if constexpr (Trigger==ScopeTrigger::ALWAYS) {
+      fInvocable();
+    } else {
+      static_assert(detail::traits::kAlwaysFalseV<T>, "Unhandled scope trigger");
+    }
   }
+
   private:
   T fInvocable;
 };
+
+/*
+ * CTAD does not support partial explicit template specification
+ * which is needed to specify the non-type template parameter
+ * trigger. However, this is permitted in a normal function,
+ * so we can get a nice API by writing a construction wrapper
+ * around ScopeGuard
+ */
+template <ScopeTrigger Trigger = ScopeTrigger::ALWAYS, typename T>
+auto makeScopeGuard(T aInvocable) {
+  return ScopeGuard<Trigger, T>(aInvocable);
+}
 
 /*
  * Given a value aVal with deduced type T, push the correctly
@@ -398,8 +429,14 @@ class ScopeGuard {
  */
 template <typename T>
 void toLua(lua_State *aState, T const &aVal) {
-  int expectedFinalStackSize = lua_gettop(aState) + 1;
-  auto guard = ScopeGuard([aState, expectedFinalStackSize]() { assert(lua_gettop(aState)==expectedFinalStackSize); });
+  int initialStackSize = lua_gettop(aState);
+  auto guard = makeScopeGuard([aState, initialStackSize]() {
+    int expectedStackSize = initialStackSize;
+    if (!std::uncaught_exceptions()) {
+      expectedStackSize++;
+    }
+    assert(lua_gettop(aState)==expectedStackSize);
+  });
   if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
     lua_pushboolean(aState, aVal);
   } else if constexpr (std::is_arithmetic_v<std::decay_t<T>>) {
@@ -434,9 +471,15 @@ void toLua(lua_State *aState, T const &aVal) {
  */
 template <typename T>
 T fromLua(lua_State *aState) {
-  int expectedFinalStackSize = lua_gettop(aState) - 1;
-  auto guard = ScopeGuard([aState, expectedFinalStackSize]() { assert(lua_gettop(aState)==expectedFinalStackSize); });
-  auto popOnExit = ScopeGuard([aState]() { lua_pop(aState, 1); });
+  int initialStackSize = lua_gettop(aState);
+  auto guard = makeScopeGuard([aState, initialStackSize]() {
+    int expectedStackSize = initialStackSize;
+    if (!std::uncaught_exceptions()) {
+      expectedStackSize--;
+    }
+    assert(lua_gettop(aState)==expectedStackSize);
+  });
+  auto popOnExit = makeScopeGuard<ScopeTrigger::SUCCESS>([aState]() { lua_pop(aState, 1); });
   if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
     if (!lua_isboolean(aState, -1)) {
       throw IncorrectType("Runtime type cannot be converted to bool");
