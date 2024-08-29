@@ -319,11 +319,11 @@ void toLuaTuple(lua_State *aState, const T &aVal) {
 }
 
 /*
- * getTableElementsAsTuple uses a fold-expression along with a compile-time
+ * getTableElementsAsTuple uses a pack expansion along with a compile-time
  * index_sequence to expand a single syntactic call to getTableElement
  * to N calls, one for each tuple element.
  *
- * T is assumed to be a tuple type, and we use a fold expression within
+ * T is assumed to be a tuple type, and we use a pack expansion within
  * an initializer list to construct the return tuple in-place.
 */
 template <typename T, std::size_t... I>
@@ -339,7 +339,7 @@ T fromLuaTuple(lua_State *aState) {
 
 template <typename T, size_t ...I>
 T getTableElementsAsMetaStruct(lua_State *aState, std::index_sequence<I...>) {
-  // Avoid another template function with an immediately invoked lambda to satisfy fold expression
+  // Avoid another template function with an immediately invoked lambda to satisfy pack expansion
   return {{[aState]() {
     lua_getfield(aState, -1, std::tuple_element_t<I, typename T::Fields>::fDiscriminator.data());
     return fromLua<typename std::tuple_element_t<I, typename T::Fields>::T>(aState);
@@ -535,7 +535,7 @@ template <typename Callable, typename> std::optional<Callable> gCallable;
  * So we have this utility to return a tuple of type std::tuple<Args...>
  * after popping the correctly typed values off the Lua stack.
  *
- * Note the fold expression, similar to getTableElementsAsTuple
+ * Note the pack expansion, similar to getTableElementsAsTuple
  */
 template <typename ...Args>
 std::tuple<Args...> getArgsAsTuple(lua_State *aState, std::tuple<Args...>) {
