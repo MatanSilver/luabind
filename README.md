@@ -103,13 +103,9 @@ using namespace luabind::meta::literals;
 using namespace luabind::meta;
 
 meta_struct<
-meta_field<"biz"_f, int>,
-meta_field<"buz"_f, bool>> bar{
-{
-1
-}, {
-false
-}
+  meta_field<"biz"_f, int>,
+  meta_field<"buz"_f, bool>> bar{
+    {1}, {false}
 };
 
 auto x = bar.f<"biz"_f>();
