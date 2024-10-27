@@ -130,7 +130,8 @@ ASSERT_EQ(bar.f<"biz"_f>(), 10);
 You can also use utilities from this library to implement a C library that can be "require"-d by a lua interpreter. See
 the examples/module directory for an example. The Dockerfile documents the build process and can be built with:
 
-```docker build -f examples/module/Dockerfile -t luabind_module .
+```
+docker build -f examples/module/Dockerfile -t luabind_module .
 ```
 
 # Error handling:
