@@ -30,7 +30,7 @@ Global variables can also be read in a similar way.
 Arbitrary lua code can be executed on the interpreter state through the shift operator:
 
 ```C++
-    luabind::Lua lua;
+luabind::Lua lua;
 lua << R"(
             print("thing")
         )";
@@ -64,7 +64,7 @@ cmake --build .
 ## Function bindings:
 
 ```C++
-    luabind::Lua lua;
+luabind::Lua lua;
 lua["timesTwo"] =[](int x) -> int {
 return x * 2;
 };
@@ -80,12 +80,9 @@ ASSERT_EQ(x, 8);
 ## Different types:
 
 ```C++
-    luabind::Lua lua;
+luabind::Lua lua;
 // We can even have tuples containing tuples!
-using T = std::tuple<std::string,
-int,
-bool,
-std::tuple<int, bool>>;
+using T = std::tuple<std::string, int, bool, std::tuple<int, bool>>;
 T initialTuple{ "thing", 1, true, { 4, false }};
 lua["newtuple"] = initialTuple;
 T reconstructedTuple = lua["newtuple"];
