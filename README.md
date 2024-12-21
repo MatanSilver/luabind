@@ -61,7 +61,7 @@ cmake --build .
 
 # Example Usage
 
-## Function bindings:
+## Function Bindings
 
 ```C++
 luabind::Lua lua;
@@ -77,7 +77,7 @@ int x = lua["callIntoCFunc"](4);
 ASSERT_EQ(x, 8);
 ```
 
-## Different types:
+## Supported Types
 
 ```C++
 luabind::Lua lua;
@@ -127,7 +127,7 @@ the examples/module directory for an example. The Dockerfile documents the build
 docker build -f examples/module/Dockerfile -t luabind_module .
 ```
 
-# Error handling:
+# Error Handling
 
 Through the use of `lua_pcall` and try-catch in C++, errors are bubbled up between the
 C++ and Lua stacks. Lua errors are strings and get converted to runtime errors in C++
