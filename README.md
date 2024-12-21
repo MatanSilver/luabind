@@ -23,10 +23,15 @@ Variables can be easily introduced into the global namespace:
 
 ```C++
 luabind::Lua lua;
-    lua["timesTwo"] = 1;
+lua["timesTwo"] = 1;
 ```
 
-Global variables can also be read in a similar way.
+Global variables can also be read in a similar way:
+
+```C++
+int timesTwo = lua["timesTwo"];
+```
+
 Arbitrary lua code can be executed on the interpreter state through the shift operator:
 
 ```C++
@@ -39,8 +44,7 @@ lua << R"(
 Right now luabind does not support an escape hatch for operating on arbitrary tables.
 Either the table must have the type of all elements (and the number of elements) known,
 or the table must be convertible to a vector of uniform typed values.
-If a C++ function bound to lua throws an exception, this may crash the program.
-Some nominal type-checking is performed when marshalling values between domains.
+Runtime type-checking is performed when marshalling values between domains.
 
 # Install Dependencies
 
@@ -63,9 +67,11 @@ cmake --build .
 
 ## Function Bindings
 
+Luabind allows you to both call C++ functions from Lua, and Lua functions from C++:
+
 ```C++
 luabind::Lua lua;
-lua["timesTwo"] =[](int x) -> int {
+lua["timesTwo"] = [](int x) -> int {
 return x * 2;
 };
 lua << R"(
