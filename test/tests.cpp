@@ -324,9 +324,9 @@ TEST(LuaBind, MetaStruct) {
   using namespace luabind::meta::literals;
   using namespace luabind::meta;
 
-  meta_struct<
-      meta_field<"biz"_f, int>,
-      meta_field<"buz"_f, bool>> bar{{1}, {false}};
+  table<
+      field<"biz"_f, int>,
+      field<"buz"_f, bool>> bar{{1}, {false}};
 
   auto x = bar.f<"biz"_f>();
   auto y = bar.f<"buz"_f>();
@@ -345,9 +345,9 @@ TEST(LuaBind, MetaStructSerDe) {
   using namespace luabind::meta::literals;
   using namespace luabind::meta;
 
-  meta_struct<
-      meta_field<"biz"_f, int>,
-      meta_field<"buz"_f, bool>> bar{{1}, {false}};
+  table<
+      field<"biz"_f, int>,
+      field<"buz"_f, bool>> bar{{1}, {false}};
 
   ASSERT_TRUE(bar==roundTrip(bar));
 }
@@ -356,7 +356,7 @@ TEST(LuaBind, MetaStructVector) {
   using namespace luabind::meta::literals;
   using namespace luabind::meta;
 
-  using MetaStructType = meta_struct<meta_field<"field1"_f, int>, meta_field<"field2"_f, std::string>>;
+  using MetaStructType = table<field<"field1"_f, int>, field<"field2"_f, std::string>>;
   using VectorType = std::vector<MetaStructType>;
 
   VectorType initialValue{{{0}, {"zero"}}, {{1}, {"one"}}};
@@ -367,9 +367,9 @@ TEST(LuaBind, MetaStructIsReadable) {
   using namespace luabind::meta::literals;
   using namespace luabind::meta;
 
-  meta_struct<
-      meta_field<"biz"_f, int>,
-      meta_field<"buz"_f, bool>> bar{{1}, {false}};
+  table<
+      field<"biz"_f, int>,
+      field<"buz"_f, bool>> bar{{1}, {false}};
 
   luabind::Lua lua;
 
@@ -379,9 +379,9 @@ TEST(LuaBind, MetaStructIsReadable) {
         end
     )";
   lua["globalStruct"] = bar;
-  meta_struct<
-      meta_field<"foo"_f, int>,
-      meta_field<"far"_f, bool>> expected{{1}, {false}};
+  table<
+      field<"foo"_f, int>,
+      field<"far"_f, bool>> expected{{1}, {false}};
   ASSERT_TRUE(expected==lua["transform"](bar));
 }
 
@@ -406,7 +406,7 @@ TEST(LuaBind, StackManagement) {
   bool isSame = lua["someFunc"]("blah");
   ASSERT_TRUE(isSame);
   ASSERT_EQ(lua_gettop(l), 0);
-  using MostComplexType = meta_struct<meta_field<"structField"_f, std::tuple<int, std::vector<std::string>>>>;
+  using MostComplexType = table<field<"structField"_f, std::tuple<int, std::vector<std::string>>>>;
   MostComplexType original{{{1, {"elem1", "elem2"}}}};
   ASSERT_TRUE(original==roundTrip(original, lua));
   ASSERT_EQ(lua_gettop(l), 0);

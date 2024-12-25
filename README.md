@@ -14,7 +14,7 @@ between the two language domains. There is a straightforward mapping of types:
 | const char *     | string   |
 | std::vector      | table    |
 | std::tuple       | table    |
-| meta_struct      | table    |
+| table            | table    |
 | callable object  | function |
 | function pointer | function |
 | method pointer   | function |
@@ -97,7 +97,7 @@ ASSERT_EQ(initialTuple, reconstructedTuple);
 
 C++20 does not have compile-time reflection. This means you can't know the names
 of struct fields at compile-time. That would have been a nice way to make tables
-with named fields. Instead, we can invent a "meta_struct" that uses clever
+with named fields. Instead, we can invent a "table" that uses clever
 compile-time processing to store field names at compile-time along with the other
 type information for the table elements. The end-result is similar to reflection:
 
@@ -105,9 +105,9 @@ type information for the table elements. The end-result is similar to reflection
 using namespace luabind::meta::literals;
 using namespace luabind::meta;
 
-meta_struct<
-  meta_field<"biz"_f, int>,
-  meta_field<"buz"_f, bool>> bar{
+table<
+  field<"biz"_f, int>,
+  field<"buz"_f, bool>> bar{
     {1}, {false}
 };
 

@@ -140,7 +140,7 @@ using DiscriminatorContainer = std::array<char, kMaxFieldSize>;
  * A type that can store a value of arbitrary type, associated with a compile-time name
  */
 template <DiscriminatorContainer Discriminator, typename Type>
-struct meta_field {
+struct field {
   using T = Type;
   T fValue;
   static inline constexpr DiscriminatorContainer fDiscriminator = Discriminator;
@@ -151,14 +151,14 @@ struct meta_field {
   }
 
   template <DiscriminatorContainer OtherDiscriminator, typename OtherType>
-  bool operator==(meta_field<OtherDiscriminator, OtherType> const &aOther) const {
+  bool operator==(field<OtherDiscriminator, OtherType> const &aOther) const {
     return (fDiscriminator==OtherDiscriminator) && std::is_same_v<T, OtherType> && (fValue==aOther.fValue);
   }
 };
 
 /*
- * Finds the index of the field in a meta_struct that has a particular name
- * Constexpr, so this can be invoked at compile-time to reference a particular field of a meta_struct by name
+ * Finds the index of the field in a table that has a particular name
+ * Constexpr, so this can be invoked at compile-time to reference a particular field of a table by name
  * with no runtime overhead
  */
 template <typename Fields, DiscriminatorContainer TestDiscriminator, size_t ...I>
@@ -174,13 +174,13 @@ constexpr size_t getIndexMatchingName(std::index_sequence<I...>) {
  * Allows name-based addressing of the stored fields
  */
 template <typename ...MetaFields>
-struct meta_struct {
+struct table {
   using Fields = std::tuple<MetaFields...>;
   Fields fFields;
 
-  meta_struct(MetaFields ...aFields) : fFields{aFields...} {} // NOLINT(google-explicit-constructor)
+  table(MetaFields ...aFields) : fFields{aFields...} {} // NOLINT(google-explicit-constructor)
 
-  meta_struct(meta_struct<MetaFields...> const &aOther) : fFields{aOther.fFields} {};
+  table(table<MetaFields...> const &aOther) : fFields{aOther.fFields} {};
 
   template <DiscriminatorContainer Discriminator>
   auto &f() {
@@ -190,7 +190,7 @@ struct meta_struct {
     return std::get<idx>(fFields).fValue;
   }
 
-  bool operator==(meta_struct<MetaFields...> const &aOther) const {
+  bool operator==(table<MetaFields...> const &aOther) const {
     return fFields==aOther.fFields;
   }
 };
@@ -206,13 +206,13 @@ constexpr DiscriminatorContainer operator ""_f(const char *aStr, const unsigned 
 
 namespace luabind::detail::traits {
 template <typename>
-struct is_meta_struct : std::false_type {};
+struct is_table : std::false_type {};
 
 template <typename ...Args>
-struct is_meta_struct<meta::meta_struct<Args...>> : std::true_type {};
+struct is_table<meta::table<Args...>> : std::true_type {};
 
 template <typename T>
-constexpr bool is_meta_struct_v = is_meta_struct<T>::value;
+constexpr bool is_table_v = is_table<T>::value;
 }
 
 namespace luabind {
@@ -359,7 +359,7 @@ void setTableElementsAsMetaStruct(lua_State *aState, const T &aMetaStruct, std::
 
 template <typename T>
 T fromLuaMetaStruct(lua_State *aState) {
-  static_assert(traits::is_meta_struct_v<T>);
+  static_assert(traits::is_table_v<T>);
 
   // For each field according to the index_sequence, deserialize that element by indexing into the lua tuple
   // using the field name, and calling fromLua using the field type
@@ -368,7 +368,7 @@ T fromLuaMetaStruct(lua_State *aState) {
 
 template <typename T>
 void toLuaMetaStruct(lua_State *aState, const T &aVal) {
-  static_assert(traits::is_meta_struct_v<T>);
+  static_assert(traits::is_table_v<T>);
 
   // For each field according to the index_sequence, serialize that element by calling toLua based on
   // the field type
@@ -454,7 +454,7 @@ void toLua(lua_State *aState, T const &aVal) {
     toLuaTuple(aState, aVal);
   } else if constexpr (traits::kIsCallableV<std::decay_t<T>>) {
     lua_pushcfunction(aState, adapt(aVal));
-  } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
+  } else if constexpr (traits::is_table_v<std::decay_t<T>>) {
     toLuaMetaStruct(aState, aVal);
   } else {
     static_assert(traits::kAlwaysFalseV<T>, "Unsupported type");
@@ -516,7 +516,7 @@ T fromLua(lua_State *aState) {
   } else if constexpr (traits::kIsCallableV<std::decay_t<T>>) {
     static_assert(detail::traits::kAlwaysFalseV<T>,
                   "Unable to create a function object from Lua, use the GetGlobalHelper/CallHelper instead");
-  } else if constexpr (traits::is_meta_struct_v<std::decay_t<T>>) {
+  } else if constexpr (traits::is_table_v<std::decay_t<T>>) {
     auto newTable = fromLuaMetaStruct<std::decay_t<T>>(aState);
     return newTable;
   } else {

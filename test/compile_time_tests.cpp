@@ -78,8 +78,8 @@ static_assert(!traits::kIsTupleV<std::vector<std::tuple<>>>);
 static_assert(!traits::kIsTupleV<std::string>);
 static_assert(!traits::kIsTupleV<void>);
 
-static_assert(traits::is_meta_struct_v<meta_struct<>>);
-static_assert(traits::is_meta_struct_v<meta_struct<meta_field<"name"_f, int>>>);
-static_assert(traits::is_meta_struct_v<meta_struct<meta_field<"name1"_f, int>, meta_field<"name2"_f, std::string>>>);
-static_assert(!traits::is_meta_struct_v<int>);
-static_assert(!traits::is_meta_struct_v<std::string>);
+static_assert(traits::is_table_v<table<>>);
+static_assert(traits::is_table_v<table<field<"name"_f, int>>>);
+static_assert(traits::is_table_v<table<field<"name1"_f, int>, field<"name2"_f, std::string>>>);
+static_assert(!traits::is_table_v<int>);
+static_assert(!traits::is_table_v<std::string>);
