@@ -338,7 +338,7 @@ T fromLuaTuple(lua_State *aState) {
 }
 
 template <typename T, size_t ...I>
-T getTableElementsAsMetaStruct(lua_State *aState, std::index_sequence<I...>) {
+T getTableElementsAsTable(lua_State *aState, std::index_sequence<I...>) {
   // Avoid another template function with an immediately invoked lambda to satisfy pack expansion
   return {{[aState]() {
     lua_getfield(aState, -1, std::tuple_element_t<I, typename T::Fields>::fDiscriminator.data());
@@ -347,10 +347,10 @@ T getTableElementsAsMetaStruct(lua_State *aState, std::index_sequence<I...>) {
 }
 
 template <typename T, size_t ...I>
-void setTableElementsAsMetaStruct(lua_State *aState, const T &aMetaStruct, std::index_sequence<I...>) {
+void setTableElementsAsTable(lua_State *aState, const T &aTable, std::index_sequence<I...>) {
   // Avoid another template function with an immediately invoked lambda to satisfy fold expression
-  ([aState, &aMetaStruct]() {
-    toLua(aState, std::get<I>(aMetaStruct.fFields).fValue);
+  ([aState, &aTable]() {
+    toLua(aState, std::get<I>(aTable.fFields).fValue);
 
     // idx -1 on the stack is the converted aVal, -2 is the table
     lua_setfield(aState, -2, std::tuple_element_t<I, typename T::Fields>::fDiscriminator.data());
@@ -358,22 +358,22 @@ void setTableElementsAsMetaStruct(lua_State *aState, const T &aMetaStruct, std::
 }
 
 template <typename T>
-T fromLuaMetaStruct(lua_State *aState) {
+T fromLuaTable(lua_State *aState) {
   static_assert(traits::is_table_v<T>);
 
   // For each field according to the index_sequence, deserialize that element by indexing into the lua tuple
   // using the field name, and calling fromLua using the field type
-  return getTableElementsAsMetaStruct<T>(aState, std::make_index_sequence<std::tuple_size_v<typename T::Fields>>());
+  return getTableElementsAsTable<T>(aState, std::make_index_sequence<std::tuple_size_v<typename T::Fields>>());
 }
 
 template <typename T>
-void toLuaMetaStruct(lua_State *aState, const T &aVal) {
+void toLuaTable(lua_State *aState, const T &aVal) {
   static_assert(traits::is_table_v<T>);
 
   // For each field according to the index_sequence, serialize that element by calling toLua based on
   // the field type
   lua_createtable(aState, std::tuple_size_v<std::decay_t<typename T::Fields>>, 0);
-  setTableElementsAsMetaStruct(aState, aVal, std::make_index_sequence<std::tuple_size_v<typename T::Fields>>());
+  setTableElementsAsTable(aState, aVal, std::make_index_sequence<std::tuple_size_v<typename T::Fields>>());
 }
 
 enum class ScopeTrigger {
@@ -455,7 +455,7 @@ void toLua(lua_State *aState, T const &aVal) {
   } else if constexpr (traits::is_callable_v<std::decay_t<T>>) {
     lua_pushcfunction(aState, adapt(aVal));
   } else if constexpr (traits::is_table_v<std::decay_t<T>>) {
-    toLuaMetaStruct(aState, aVal);
+    toLuaTable(aState, aVal);
   } else {
     static_assert(traits::always_false_v<T>, "Unsupported type");
   }
@@ -517,7 +517,7 @@ T fromLua(lua_State *aState) {
     static_assert(detail::traits::always_false_v<T>,
                   "Unable to create a function object from Lua, use the GetGlobalHelper/CallHelper instead");
   } else if constexpr (traits::is_table_v<std::decay_t<T>>) {
-    auto newTable = fromLuaMetaStruct<std::decay_t<T>>(aState);
+    auto newTable = fromLuaTable<std::decay_t<T>>(aState);
     return newTable;
   } else {
     static_assert(detail::traits::always_false_v<T>, "Unsupported type");
