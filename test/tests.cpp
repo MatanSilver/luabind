@@ -320,7 +320,7 @@ TEST(LuaBind, SyntaxError) {
   ASSERT_THROW(willThrow(), luabind::SyntaxError);
 }
 
-TEST(LuaBind, MetaStruct) {
+TEST(LuaBind, Table) {
   using namespace luabind::meta::literals;
   using namespace luabind::meta;
 
@@ -341,7 +341,7 @@ TEST(LuaBind, MetaStruct) {
   ASSERT_EQ(bar.f<"biz"_f>(), 10);
 }
 
-TEST(LuaBind, MetaStructSerDe) {
+TEST(LuaBind, TableSerDe) {
   using namespace luabind::meta::literals;
   using namespace luabind::meta;
 
@@ -352,18 +352,18 @@ TEST(LuaBind, MetaStructSerDe) {
   ASSERT_TRUE(bar==roundTrip(bar));
 }
 
-TEST(LuaBind, MetaStructVector) {
+TEST(LuaBind, TableVector) {
   using namespace luabind::meta::literals;
   using namespace luabind::meta;
 
-  using MetaStructType = table<field<"field1"_f, int>, field<"field2"_f, std::string>>;
-  using VectorType = std::vector<MetaStructType>;
+  using TableType = table<field<"field1"_f, int>, field<"field2"_f, std::string>>;
+  using VectorType = std::vector<TableType>;
 
   VectorType initialValue{{{0}, {"zero"}}, {{1}, {"one"}}};
   ASSERT_TRUE(initialValue==roundTrip(initialValue));
 }
 
-TEST(LuaBind, MetaStructIsReadable) {
+TEST(LuaBind, TableIsReadable) {
   using namespace luabind::meta::literals;
   using namespace luabind::meta;
 
