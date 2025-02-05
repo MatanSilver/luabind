@@ -9,7 +9,7 @@ using namespace luabind::meta;
 using namespace luabind::meta::literals;
 
 // Static asserts act as unittests for compile-time functionality
-static_assert(!traits::kAlwaysFalseV<int>);
+static_assert(!traits::always_false_v<int>);
 
 struct CallableStruct {
   char operator()(int, bool) { return 'a'; }
@@ -23,16 +23,16 @@ struct CallableStruct {
 
 struct NonCallableStruct {};
 
-static_assert(traits::kIsCallableV<decltype([](int, bool) {})>);
-static_assert(traits::kIsCallableV<decltype([](int, bool) { return 1; })>);
-static_assert(traits::kIsCallableV<void (*)(int, bool)>);
-static_assert(traits::kIsCallableV<int (*)(int, bool)>);
-static_assert(traits::kIsCallableV<CallableStruct>);
-static_assert(traits::kIsCallableV<decltype(&CallableStruct::constMethod)>);
-static_assert(traits::kIsCallableV<decltype(&CallableStruct::nonConstMethod)>);
-static_assert(traits::kIsCallableV<decltype(&CallableStruct::staticMethod)>);
-static_assert(!traits::kIsCallableV<int>);
-static_assert(!traits::kIsCallableV<NonCallableStruct>);
+static_assert(traits::is_callable_v<decltype([](int, bool) {})>);
+static_assert(traits::is_callable_v<decltype([](int, bool) { return 1; })>);
+static_assert(traits::is_callable_v<void (*)(int, bool)>);
+static_assert(traits::is_callable_v<int (*)(int, bool)>);
+static_assert(traits::is_callable_v<CallableStruct>);
+static_assert(traits::is_callable_v<decltype(&CallableStruct::constMethod)>);
+static_assert(traits::is_callable_v<decltype(&CallableStruct::nonConstMethod)>);
+static_assert(traits::is_callable_v<decltype(&CallableStruct::staticMethod)>);
+static_assert(!traits::is_callable_v<int>);
+static_assert(!traits::is_callable_v<NonCallableStruct>);
 
 static_assert(std::is_same_v<traits::function_traits<decltype([](int, bool) {})>::ReturnType, void>);
 static_assert(std::is_same_v<traits::function_traits<decltype([](int,
@@ -63,20 +63,20 @@ static_assert(
     std::is_same_v<traits::function_traits<decltype(&CallableStruct::staticMethod)>::ArgumentTypes,
                    std::tuple<int, bool>>);
 
-static_assert(traits::kIsVectorV<std::vector<int>>);
-static_assert(traits::kIsVectorV<std::vector<std::string>>);
-static_assert(traits::kIsVectorV<std::vector<std::vector<int>>>);
-static_assert(!traits::kIsVectorV<int>);
-static_assert(!traits::kIsVectorV<std::string>);
-static_assert(!traits::kIsVectorV<void>);
+static_assert(traits::is_vector_v<std::vector<int>>);
+static_assert(traits::is_vector_v<std::vector<std::string>>);
+static_assert(traits::is_vector_v<std::vector<std::vector<int>>>);
+static_assert(!traits::is_vector_v<int>);
+static_assert(!traits::is_vector_v<std::string>);
+static_assert(!traits::is_vector_v<void>);
 
-static_assert(traits::kIsTupleV<std::tuple<int>>);
-static_assert(traits::kIsTupleV<std::tuple<int, bool>>);
-static_assert(traits::kIsTupleV<std::tuple<std::string>>);
-static_assert(traits::kIsTupleV<std::tuple<std::vector<int>>>);
-static_assert(!traits::kIsTupleV<std::vector<std::tuple<>>>);
-static_assert(!traits::kIsTupleV<std::string>);
-static_assert(!traits::kIsTupleV<void>);
+static_assert(traits::is_tuple_v<std::tuple<int>>);
+static_assert(traits::is_tuple_v<std::tuple<int, bool>>);
+static_assert(traits::is_tuple_v<std::tuple<std::string>>);
+static_assert(traits::is_tuple_v<std::tuple<std::vector<int>>>);
+static_assert(!traits::is_tuple_v<std::vector<std::tuple<>>>);
+static_assert(!traits::is_tuple_v<std::string>);
+static_assert(!traits::is_tuple_v<void>);
 
 static_assert(traits::is_table_v<table<>>);
 static_assert(traits::is_table_v<table<field<"name"_f, int>>>);

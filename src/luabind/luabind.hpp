@@ -23,7 +23,7 @@ namespace luabind::detail::traits {
  */
 
 template <typename T>
-inline constexpr bool kAlwaysFalseV = false;
+inline constexpr bool always_false_v = false;
 
 /*
  * Something "callable" can be:
@@ -83,7 +83,7 @@ struct DetectCollision : public std::conditional_t<std::is_class_v<T>, T, WontCo
 };
 
 template <typename T>
-constexpr bool kHasCallOperator = !requires() { &DetectCollision<T>::operator(); };
+constexpr bool has_call_operator = !requires() { &DetectCollision<T>::operator(); };
 
 /*
  * Determining if something is callable is a bit complicated. You can use std::is_invocable
@@ -100,9 +100,9 @@ constexpr bool kHasCallOperator = !requires() { &DetectCollision<T>::operator();
  * different kinds of invocable types without knowing the argument types in advance.
  */
 template <typename T>
-constexpr bool kIsCallableV = std::is_function_v<std::remove_pointer_t<T>> ||
+constexpr bool is_callable_v = std::is_function_v<std::remove_pointer_t<T>> ||
     std::is_member_function_pointer_v<T> ||
-    kHasCallOperator<T>;
+    has_call_operator<T>;
 
 template <typename>
 struct is_vector : std::false_type {
@@ -113,7 +113,7 @@ struct is_vector<std::vector<T>> : std::true_type {
 };
 
 template <typename T>
-constexpr bool kIsVectorV = is_vector<T>::value;
+constexpr bool is_vector_v = is_vector<T>::value;
 
 template <typename>
 struct is_tuple : std::false_type {
@@ -124,17 +124,17 @@ struct is_tuple<std::tuple<Args...>> : std::true_type {
 };
 
 template <typename T>
-constexpr bool kIsTupleV = is_tuple<T>::value;
+constexpr bool is_tuple_v = is_tuple<T>::value;
 }
 
 namespace luabind::meta {
-static inline constexpr size_t kMaxFieldSize = 64;
+static inline constexpr size_t MAX_FIELD_SIZE = 64;
 
 /*
  * Something that can store the data from a string at compile-time. std::string is supposed to be constexpr
  * enough in C++20, but it seems MSVC might not have implemented that yet.
  */
-using DiscriminatorContainer = std::array<char, kMaxFieldSize>;
+using DiscriminatorContainer = std::array<char, MAX_FIELD_SIZE>;
 
 /*
  * A type that can store a value of arbitrary type, associated with a compile-time name
@@ -399,7 +399,7 @@ class ScopeGuard {
     } else if constexpr (Trigger==ScopeTrigger::ALWAYS) {
       fInvocable();
     } else {
-      static_assert(detail::traits::kAlwaysFalseV<T>, "Unhandled scope trigger");
+      static_assert(detail::traits::always_false_v<T>, "Unhandled scope trigger");
     }
   }
 
@@ -445,19 +445,19 @@ void toLua(lua_State *aState, T const &aVal) {
     lua_pushlstring(aState, aVal.c_str(), aVal.length());
   } else if constexpr (std::is_same_v<std::decay_t<T>, char *> || std::is_same_v<std::decay_t<T>, const char *>) {
     lua_pushstring(aState, aVal);
-  } else if constexpr (traits::kIsVectorV<std::decay_t<T>>) {
+  } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
     lua_createtable(aState, aVal.size(), 0);
     for (int i = 0; i < aVal.size(); ++i) {
       setTableElement(aState, aVal[i], i + 1);
     }
-  } else if constexpr (traits::kIsTupleV<std::decay_t<T>>) {
+  } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
     toLuaTuple(aState, aVal);
-  } else if constexpr (traits::kIsCallableV<std::decay_t<T>>) {
+  } else if constexpr (traits::is_callable_v<std::decay_t<T>>) {
     lua_pushcfunction(aState, adapt(aVal));
   } else if constexpr (traits::is_table_v<std::decay_t<T>>) {
     toLuaMetaStruct(aState, aVal);
   } else {
-    static_assert(traits::kAlwaysFalseV<T>, "Unsupported type");
+    static_assert(traits::always_false_v<T>, "Unsupported type");
   }
 }
 
@@ -500,7 +500,7 @@ T fromLua(lua_State *aState) {
     T ret = lua_tostring(aState, -1);
     return ret;
     // We don't support const char* for memory safety reasons
-  } else if constexpr (traits::kIsVectorV<std::decay_t<T>>) {
+  } else if constexpr (traits::is_vector_v<std::decay_t<T>>) {
     if (!lua_istable(aState, -1)) {
       throw IncorrectType("Runtime type cannot be converted to a vector");
     }
@@ -510,17 +510,17 @@ T fromLua(lua_State *aState) {
       retVec.emplace_back(fromLua<typename T::value_type>(aState));
     }
     return retVec;
-  } else if constexpr (traits::kIsTupleV<std::decay_t<T>>) {
+  } else if constexpr (traits::is_tuple_v<std::decay_t<T>>) {
     auto newTuple = fromLuaTuple<std::decay_t<T>>(aState);
     return newTuple;
-  } else if constexpr (traits::kIsCallableV<std::decay_t<T>>) {
-    static_assert(detail::traits::kAlwaysFalseV<T>,
+  } else if constexpr (traits::is_callable_v<std::decay_t<T>>) {
+    static_assert(detail::traits::always_false_v<T>,
                   "Unable to create a function object from Lua, use the GetGlobalHelper/CallHelper instead");
   } else if constexpr (traits::is_table_v<std::decay_t<T>>) {
     auto newTable = fromLuaMetaStruct<std::decay_t<T>>(aState);
     return newTable;
   } else {
-    static_assert(detail::traits::kAlwaysFalseV<T>, "Unsupported type");
+    static_assert(detail::traits::always_false_v<T>, "Unsupported type");
   }
 }
 
